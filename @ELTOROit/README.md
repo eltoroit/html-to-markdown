@@ -14,3 +14,7 @@
 
 - `heroku create --buildpack https://github.com/chibat/heroku-buildpack-deno.git`
 - Procfile: `web: deno run --allow-env --allow-net ./main.js`
+
+# SLACK
+
+- Markdown: https://slack.com/help/articles/202288908-Format-your-messages#markup

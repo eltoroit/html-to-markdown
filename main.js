@@ -1,5 +1,5 @@
 import { Application, Router } from "jsr:@oak/oak";
-import { convert } from "./converter.js";
+import { convertHtmlToSlack } from "./convertHtmlToSlack.js";
 
 const router = new Router();
 router.get("/", (ctx) => {
@@ -26,8 +26,7 @@ router.post("/convert", async (ctx) => {
       return;
     }
 
-    // Convert to markdown
-    const markdown = convert(body);
+    const markdown = convertHtmlToSlack(body);
 
     ctx.response.body = markdown;
   } catch (error) {
