@@ -18,3 +18,12 @@
 # SLACK
 
 - Markdown: https://slack.com/help/articles/202288908-Format-your-messages#markup
+  - `**bold**` to `*bold*`
+  - `*italic*` to `_italic_`
+  - `[text](url)` to `<url|text>`
+- Block Builder: https://app.slack.com/block-kit-builder/T01G0063H29
+  ```
+  {
+  	"blocks": []
+  }
+  ```
