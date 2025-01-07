@@ -64,5 +64,5 @@ export function convertHtmlToSlack(htmlText) {
     },
   ];
 
-  return JSON.stringify(blocks);
+  return blocks;
 }
