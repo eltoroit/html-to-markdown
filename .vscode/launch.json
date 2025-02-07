@@ -6,7 +6,7 @@
   "configurations": [
     {
       "request": "launch",
-      "name": "Launch Program",
+      "name": "Debug Deno",
       "type": "node",
       "program": "${workspaceFolder}/main.js",
       "cwd": "${workspaceFolder}",

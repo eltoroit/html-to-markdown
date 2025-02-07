@@ -1,5 +1,6 @@
 {
   "scripts": {
-    "serve": "deno run --watch --allow-env --allow-net ./main.js"
+    "serve": "deno run --allow-env --allow-net --allow-read --env-file ./main.js",
+    "monitor": "deno run --watch --allow-env --allow-net --allow-read --env-file ./main.js"
   }
 }

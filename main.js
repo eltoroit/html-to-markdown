@@ -37,13 +37,28 @@ router.post("/convert", async (ctx) => {
   }
 });
 
+// console.log(Deno.env.get("API_KEY"));
 const app = new Application();
 app.use(router.routes());
 app.use(router.allowedMethods());
 
 const port = parseInt(Deno.env.get("PORT") || "3000");
-app.listen({ port });
-console.log(`Server running on port ${port}: http://localhost:${port}`);
+const certs = {
+  private: "./cert/localhost.key",
+  public: "./cert/localhost.crt",
+};
+for (const cert of Object.keys(certs)) {
+  certs[cert] = await Deno.realPath(certs[cert]);
+  certs[cert] = await Deno.readTextFile(certs[cert]);
+}
+
+app.listen({
+  port,
+  secure: true,
+  cert: certs.public,
+  key: certs.private,
+});
+console.log(`Server running on port ${port}: https://localhost:${port}`);
 
 // // CORS middleware
 // app.use(async (ctx, next) => {
