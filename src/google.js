@@ -52,7 +52,8 @@ export class Google {
 			});
 			this.loginResult = await response.json();
 			console.log(this.loginResult);
-			ctx.response.body = `DONE`;
+			// ctx.response.body = `DONE`;
+			ctx.response.redirect("/");
 		});
 	}
 
