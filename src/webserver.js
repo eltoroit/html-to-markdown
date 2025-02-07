@@ -3,14 +3,14 @@ import { Application, Router } from "jsr:@oak/oak";
 export class Webserver {
 	router = new Router();
 
-	constructor() {
-		this._initializeServer();
+	constructor({ moreRoutes }) {
+		this._initializeServer({ moreRoutes });
 	}
 
-	async _initializeServer() {
+	async _initializeServer({ moreRoutes }) {
 		this.router = new Router();
 		const app = new Application();
-		this._makeRoutes();
+		this._makeRoutes({ moreRoutes });
 		app.use(this.router.routes());
 		app.use(this.router.allowedMethods());
 
@@ -39,9 +39,12 @@ export class Webserver {
 		}
 	}
 
-	_makeRoutes() {
+	_makeRoutes({ moreRoutes }) {
 		this._hello();
 		this._convert();
+		for (const route of moreRoutes) {
+			route({ router: this.router });
+		}
 	}
 
 	_hello() {

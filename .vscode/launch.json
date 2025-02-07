@@ -1,19 +1,18 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "request": "launch",
-      "name": "Debug Deno",
-      "type": "node",
-      "program": "${workspaceFolder}/main.js",
-      "cwd": "${workspaceFolder}",
-      "env": {},
-      "runtimeExecutable": "/Users/aperez/.deno/bin/deno",
-      "runtimeArgs": ["run", "--inspect-wait", "--allow-all"],
-      "attachSimplePort": 9229
-    }
-  ]
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "Run Deno with npm",
+			"cwd": "${workspaceFolder}",
+			"runtimeExecutable": "npm",
+			"runtimeArgs": ["run", "debug"],
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen"
+		}
+	]
 }
