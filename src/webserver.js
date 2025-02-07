@@ -55,6 +55,9 @@ export class Webserver {
           <head><title>Agentforce PTO</title><head>
           <body>
             <h1>Agentforce PTO</h1>
+            <a href="/login">login</a><br/>
+            <a href="/addScope0">addScope0</a><br/>
+            <a href="/addScope1">addScope1</a><br/>
           </body>
         </html>`;
 		});
