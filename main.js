@@ -1,17 +1,15 @@
 import { Application, Router } from "jsr:@oak/oak";
-import { convertHtmlToSlack } from "./convertHtmlToSlack.js";
 
 const router = new Router();
 router.get("/", (ctx) => {
   ctx.response.body = `
 <!DOCTYPE html>
 <html>
-  <head><title>HTML 2 Markdown</title><head>
+  <head><title>Agentforce PTO</title><head>
   <body>
-    <h1>HTML 2 Markdown</h1>
+    <h1>Agentforce PTO</h1>
   </body>
-</html>
-    `;
+</html>`;
 });
 
 router.post("/convert", async (ctx) => {
@@ -26,7 +24,7 @@ router.post("/convert", async (ctx) => {
       return;
     }
 
-    const markdown = convertHtmlToSlack(body);
+    const markdown = `Pong: ${body}`;
 
     ctx.response.body = markdown;
   } catch (error) {

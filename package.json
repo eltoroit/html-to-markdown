@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "serve": "deno run --watch --allow-env --allow-net ./main.js"
+  }
+}
