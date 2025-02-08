@@ -3,18 +3,18 @@
 export class Google {
 	moreRoutes;
 	serverRoot;
-	loginResult;
+	_loginResult;
 
 	constructor({ moreRoutes }) {
 		this.moreRoutes = moreRoutes;
 		this.serverRoot = Deno.env.get("SERVER_ROOT");
 
-		this.moreRoutes.push(this.login.bind(this));
-		this.moreRoutes.push(this.callback.bind(this));
-		this.moreRoutes.push(this.addScopes.bind(this));
+		this.moreRoutes.push(this._login.bind(this));
+		this.moreRoutes.push(this._callback.bind(this));
+		this.moreRoutes.push(this._addScopes.bind(this));
 	}
 
-	get scopesRequired() {
+	get _scopesRequired() {
 		const scopesRequired = [];
 		const scopeRoot = "https://www.googleapis.com";
 
@@ -40,28 +40,69 @@ export class Google {
 		return scopesRequired;
 	}
 
-	login({ router }) {
-		router.get("/login", (ctx) => {
-			const scopes = this.scopesRequired;
-			const scope = encodeURI(scopes.shift());
-			const state = encodeURI(JSON.stringify(scopes));
-			const queryParams = new URLSearchParams({
-				scope,
-				state,
-				response_type: "code",
-				access_type: "offline",
-				include_granted_scopes: "true",
-				login_hint: Deno.env.get("GMAIL"),
-				client_id: Deno.env.get("CLIENT_ID"),
-				redirect_uri: encodeURI(`${this.serverRoot}/callback`),
-			});
+	_login({ router }) {
+		router.get("/login", async (ctx) => {
+			const withoutRefreshtoken = () => {
+				const scopes = this._scopesRequired;
+				const scope = encodeURI(scopes.shift());
+				const state = encodeURI(JSON.stringify(scopes));
+				const queryParams = new URLSearchParams({
+					scope,
+					state,
+					response_type: "code",
+					access_type: "offline",
+					include_granted_scopes: "true",
+					login_hint: Deno.env.get("GMAIL"),
+					client_id: Deno.env.get("CLIENT_ID"),
+					redirect_uri: encodeURI(`${this.serverRoot}/callback`),
+				});
 
-			const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
-			ctx.response.redirect(url);
+				const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
+				ctx.response.redirect(url);
+			};
+			const withRefreshToken = async (refresh_token) => {
+				const response = await fetch("https://oauth2.googleapis.com/token", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/x-www-form-urlencoded",
+					},
+					body: new URLSearchParams({
+						grant_type: "refresh_token",
+						client_id: Deno.env.get("CLIENT_ID"),
+						client_secret: Deno.env.get("CLIENT_SECRET"),
+						refresh_token,
+					}),
+				});
+				this.loginResult = await response.json();
+				console.log(this.loginResult);
+				ctx.response.redirect(`/`);
+			};
+			const getRefreshToken = async () => {
+				try {
+					const path = "secrets/google.json";
+					await Deno.lstat(path);
+					const json = await Deno.readTextFile(path);
+					const refresh_token = JSON.parse(json).refresh_token;
+					return refresh_token;
+				} catch (error) {
+					if (error instanceof Deno.errors.NotFound) {
+						return null;
+					} else {
+						throw error; // Re-throw unexpected errors
+					}
+				}
+			};
+
+			const refresh_token = await getRefreshToken();
+			if (refresh_token) {
+				await withRefreshToken(refresh_token);
+			} else {
+				await withoutRefreshtoken();
+			}
 		});
 	}
 
-	callback({ router }) {
+	_callback({ router }) {
 		router.get("/callback", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			// for (const [key, value] of queryParams) {
@@ -82,9 +123,9 @@ export class Google {
 			});
 			this.loginResult = await response.json();
 			await Deno.mkdir("secrets", { recursive: true });
-			await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.txt`, JSON.stringify(this.loginResult, null, 4));
+			await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.json`, JSON.stringify(this.loginResult, null, 4));
 			if (this.loginResult.refresh_token) {
-				await Deno.writeTextFile(`secrets/google.txt`, JSON.stringify(this.loginResult, null, 4));
+				await Deno.writeTextFile(`secrets/google.json`, JSON.stringify(this.loginResult, null, 4));
 			}
 			console.log(this.loginResult);
 
@@ -101,7 +142,7 @@ export class Google {
 		});
 	}
 
-	addScopes({ router }) {
+	_addScopes({ router }) {
 		router.get("/addScope", (ctx) => {
 			const queryParamsRequest = ctx.request.url.searchParams;
 
