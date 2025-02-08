@@ -5,6 +5,7 @@ export class Google {
 	calendarId;
 	loginResult;
 	isDebug = false;
+	itemFields = ["id", "summary", "description", "start", "end", "attendees"];
 
 	constructor({ moreRoutes }) {
 		this.serverRoot = Deno.env.get("SERVER_ROOT");
@@ -14,11 +15,13 @@ export class Google {
 		moreRoutes.push(this._callbackGET.bind(this));
 		moreRoutes.push(this._addScopesGET.bind(this));
 
-		// Calendars
+		// Calendar events
+		moreRoutes.push(this._getEventGET.bind(this));
 		moreRoutes.push(this._findEventsGET.bind(this));
-		moreRoutes.push(this._createEventGET.bind(this));
-		moreRoutes.push(this._createEventPOST.bind(this));
 		moreRoutes.push(this._findCalendarGET.bind(this));
+		moreRoutes.push(this._createEventPOST.bind(this));
+		moreRoutes.push(this._updateEventPATCH.bind(this));
+		moreRoutes.push(this._deleteEventDELETE.bind(this));
 	}
 
 	_findCalendarGET({ router }) {
@@ -27,16 +30,24 @@ export class Google {
 		});
 	}
 
-	_createEventGET({ router }) {
-		router.get("/createEvent", async (ctx) => {
-			const start = new Date();
-			const end = new Date(new Date(start).setHours(start.getHours() + 1));
-			await this._createEvent({ ctx, start, end, employeeName: "Andres Perez", employeeEmail: "aperez@salesforce.com" });
+	_findEventsGET({ router }) {
+		router.get("/findEvents", async (ctx) => {
+			const queryParams = ctx.request.url.searchParams;
+			const query = queryParams.get("query");
+			await this._findEvents({ ctx, query });
+		});
+	}
+
+	_getEventGET({ router }) {
+		router.get("/event", async (ctx) => {
+			const queryParams = ctx.request.url.searchParams;
+			const id = queryParams.get("id");
+			await this._getEvent({ ctx, id });
 		});
 	}
 
 	_createEventPOST({ router }) {
-		router.post("/createEvent", async (ctx) => {
+		router.post("/event", async (ctx) => {
 			let { start, end, employeeName, employeeEmail } = await ctx.request.body.json();
 			start = new Date(start);
 			end = new Date(end);
@@ -45,11 +56,21 @@ export class Google {
 		});
 	}
 
-	_findEventsGET({ router }) {
-		router.get("/findEvents", async (ctx) => {
+	_updateEventPATCH({ router }) {
+		router.patch("/event", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
-			const query = queryParams.get("query");
-			await this._findEvents({ ctx, query });
+			const id = queryParams.get("id");
+			const { start, end } = await ctx.request.body.json();
+			console.log(id, start, end);
+			await this._updateEvent({ ctx, id, start, end });
+		});
+	}
+
+	_deleteEventDELETE({ router }) {
+		router.delete("/event", async (ctx) => {
+			const queryParams = ctx.request.url.searchParams;
+			const id = queryParams.get("id");
+			await this._deleteEvent({ ctx, id });
 		});
 	}
 
@@ -66,10 +87,83 @@ export class Google {
 			this.calendarId = calendars[0].id;
 			console.log(`Calendar: ${this.calendarId}`);
 			if (ctx) {
-				ctx.response.body = "DONE";
+				ctx.response.body = "Calendar found";
 			}
 		} else {
 			throw new Error(`Could not find calendar named [${calendarName}]`);
+		}
+	}
+
+	async _findEvents({ ctx, query }) {
+		if (!this.calendarId) {
+			await this._findCalendar({});
+		}
+
+		let url = `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events`;
+		if (query?.length > 0) {
+			url += `?q=${query}`;
+		}
+		const events = await this._etFetch({
+			url,
+			options: {
+				method: "GET",
+			},
+		});
+
+		// Parse list
+		const items = events.items.map((event) => {
+			const item = {};
+			this.itemFields.forEach((field) => {
+				item[field] = event[field];
+			});
+			return item;
+		});
+		const output = {
+			size: items.length,
+			items,
+		};
+
+		console.log(`${output.size} events found`);
+		if (ctx) {
+			ctx.response.type = "json";
+			ctx.response.status = "200";
+			ctx.response.body = output;
+		} else {
+			if (this.isDebug) console.log(output);
+			return output;
+		}
+	}
+
+	async _getEvent({ ctx, id }) {
+		if (!id) {
+			throw new Error(`Finding event by ID without an ID is not allowed!`);
+		}
+
+		if (!this.calendarId) {
+			await this._findCalendar({});
+		}
+
+		const event = await this._etFetch({
+			url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events/${id}`,
+			options: {
+				method: "GET",
+			},
+		});
+
+		// Parse list
+		const output = {};
+		this.itemFields.forEach((field) => {
+			output[field] = event[field];
+		});
+
+		console.log(`Found event with ID: ${id}`);
+		if (ctx) {
+			ctx.response.type = "json";
+			ctx.response.status = "200";
+			ctx.response.body = output;
+		} else {
+			if (this.isDebug) console.log(output);
+			return output;
 		}
 	}
 
@@ -103,42 +197,67 @@ export class Google {
 		if (this.isDebug) console.log(response);
 		console.log("Event created");
 		if (ctx) {
-			ctx.response.body = "DONE";
+			ctx.response.body = "Event created";
 		}
 	}
 
-	async _findEvents({ ctx, query }) {
+	async _updateEvent({ ctx, id, start, end }) {
+		if (!id) {
+			throw new Error(`Updating event by ID without an ID is not allowed!`);
+		}
+
+		if (!this.calendarId) {
+			await this._findCalendar({});
+		}
+		const event = await this._getEvent({ id });
+		if (event) {
+			event.start.dateTime = new Date(start).toJSON();
+			event.end.dateTime = new Date(end).toJSON();
+			const sendUpdates = "none";
+			const response = await this._etFetch({
+				url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events/${id}?sendUpdates=${sendUpdates}`,
+				options: {
+					method: "PUT",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(event),
+				},
+			});
+			if (this.isDebug) console.log(response);
+			console.log("Event updated");
+			if (ctx) {
+				ctx.response.body = "Event updated";
+			}
+		} else {
+			throw new Error(`Event with ID [${id}] was NOT found to be updated`);
+		}
+	}
+
+	async _deleteEvent({ ctx, id }) {
+		if (!id) {
+			throw new Error(`Deleting event by ID without an ID is not allowed!`);
+		}
+
 		if (!this.calendarId) {
 			await this._findCalendar({});
 		}
 
-		const events = await this._etFetch({
-			url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events?q=${query}`,
-			options: {
-				method: "GET",
-			},
-		});
-
-		// Parse list
-		const fields = ["id", "summary", "description", "start", "end", "attendees"];
-		const items = events.items.map((event) => {
-			const item = {};
-			fields.forEach((field) => {
-				item[field] = event[field];
+		const event = await this._getEvent({ id });
+		if (event) {
+			await this._etFetch({
+				url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events/${id}`,
+				options: {
+					method: "DELETE",
+				},
+				expectedStatus: 204,
 			});
-			return item;
-		});
-		const output = {
-			size: items.length,
-			items,
-		};
-
-		if (ctx) {
-			ctx.response.type = "json";
-			ctx.response.status = "201";
-			ctx.response.body = output;
+			console.log(`Event with ID: ${id} deleted`);
+			if (ctx) {
+				ctx.response.body = "Event deleted";
+			}
 		} else {
-			console.log(output);
+			throw new Error(`Event with ID [${id}] was NOT found to be deleted`);
 		}
 	}
 
@@ -308,7 +427,6 @@ export class Google {
 			if (this.loginResult.access_token) {
 				console.log("Logged in with Refresh Token");
 				if (ctx) {
-					// ctx.response.body = "DONE";
 					ctx.response.redirect(`/`);
 				} else {
 					return;
@@ -337,8 +455,13 @@ export class Google {
 		};
 
 		const makeRequest = async () => {
-			addAuthorization();
-			response = await fetch(url, options);
+			try {
+				addAuthorization();
+				response = await fetch(url, options);
+			} catch (ex) {
+				console.error(ex);
+				throw ex;
+			}
 		};
 
 		console.log(`Fetching [${options.method}]: ${url}`);
@@ -349,13 +472,22 @@ export class Google {
 			await makeRequest();
 		}
 		if (response.status === expectedStatus) {
-			response = await response.json();
-			if (this.isDebug) console.log(response);
-			return response;
+			if (response.body) {
+				response = await response.json();
+				if (this.isDebug) console.log(response);
+				return response;
+			} else {
+				// No body
+				return;
+			}
 		} else {
-			console.error(response);
-			console.error(await response.text());
-			throw new Error(`Unexpected HTTP Status. Expecting [${expectedStatus}], received [${response.status}]`);
+			const err = {};
+			["ok", "status", "statusText", "type", "url"].forEach((key) => {
+				err[key] = response[key];
+			});
+			console.error(err); // Response
+			console.error(await response.text()); // Body
+			throw new Error(`Unexpected HTTP Status. expectedStatus [${expectedStatus}], received [${response.status}]`);
 		}
 	}
 }

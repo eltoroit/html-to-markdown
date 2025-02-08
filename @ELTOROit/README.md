@@ -27,3 +27,14 @@ openssl req -x509 -out localhost.crt -keyout localhost.key -newkey rsa:2048 -nod
 # GOOGLE
 
 -   You will get the refresh token, only the first time you authorize the app. Revoke here: https://myaccount.google.com/connections
+
+# SALESFORCE
+
+-   Time zones
+    ```
+    String val = '2025-02-08T12:00:00-06:00';
+    DateTime dt = (DateTime)Json.deserialize('"'+val+'"', DateTime.class);
+    System.debug('Original time (GMT): ' + dt.formatGmt('yyyy-MM-dd HH:mm:ss'));
+    System.debug('Toronto time: ' + dt.format('yyyy-MM-dd HH:mm:ss', 'America/Toronto'));
+    System.debug('Los Angeles time: ' + dt.format('yyyy-MM-dd HH:mm:ss', 'America/Los_Angeles'));
+    ```
