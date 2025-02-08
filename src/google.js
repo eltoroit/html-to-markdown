@@ -10,11 +10,12 @@ export class Google {
 		this.serverRoot = Deno.env.get("SERVER_ROOT");
 
 		// Login
-		moreRoutes.push(this._login.bind(this));
-		moreRoutes.push(this._callback.bind(this));
-		moreRoutes.push(this._addScopes.bind(this));
+		moreRoutes.push(this._loginGET.bind(this));
+		moreRoutes.push(this._callbackGET.bind(this));
+		moreRoutes.push(this._addScopesGET.bind(this));
 
 		// Calendars
+		moreRoutes.push(this._findEventsGET.bind(this));
 		moreRoutes.push(this._createEventGET.bind(this));
 		moreRoutes.push(this._createEventPOST.bind(this));
 		moreRoutes.push(this._findCalendarGET.bind(this));
@@ -41,6 +42,14 @@ export class Google {
 			end = new Date(end);
 			console.log(start, end, employeeName, employeeEmail);
 			await this._createEvent({ ctx, start, end, employeeName, employeeEmail });
+		});
+	}
+
+	_findEventsGET({ router }) {
+		router.get("/findEvents", async (ctx) => {
+			const queryParams = ctx.request.url.searchParams;
+			const query = queryParams.get("query");
+			await this._findEvents({ ctx, query });
 		});
 	}
 
@@ -98,6 +107,41 @@ export class Google {
 		}
 	}
 
+	async _findEvents({ ctx, query }) {
+		if (!this.calendarId) {
+			await this._findCalendar({});
+		}
+
+		const events = await this._etFetch({
+			url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events?q=${query}`,
+			options: {
+				method: "GET",
+			},
+		});
+
+		// Parse list
+		const fields = ["id", "summary", "description", "start", "end", "attendees"];
+		const items = events.items.map((event) => {
+			const item = {};
+			fields.forEach((field) => {
+				item[field] = event[field];
+			});
+			return item;
+		});
+		const output = {
+			size: items.length,
+			items,
+		};
+
+		if (ctx) {
+			ctx.response.type = "json";
+			ctx.response.status = "201";
+			ctx.response.body = output;
+		} else {
+			console.log(output);
+		}
+	}
+
 	//#region LOGIN
 	get _scopesRequired() {
 		const scopesRequired = [];
@@ -125,7 +169,7 @@ export class Google {
 		return scopesRequired;
 	}
 
-	_login({ router }) {
+	_loginGET({ router }) {
 		router.get("/login", async (ctx) => {
 			const loginWithoutRefreshToken = () => {
 				const scopes = this._scopesRequired;
@@ -156,7 +200,7 @@ export class Google {
 		});
 	}
 
-	_callback({ router }) {
+	_callbackGET({ router }) {
 		const saveLoginResults = async () => {
 			await Deno.mkdir("secrets", { recursive: true });
 			await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.json`, JSON.stringify(this.loginResult, null, 4));
@@ -202,7 +246,7 @@ export class Google {
 		});
 	}
 
-	_addScopes({ router }) {
+	_addScopesGET({ router }) {
 		router.get("/addScope", (ctx) => {
 			const queryParamsRequest = ctx.request.url.searchParams;
 

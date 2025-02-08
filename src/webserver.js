@@ -56,6 +56,7 @@ export class Webserver {
           <body>
             <h1>Agentforce PTO</h1>
             <a href="/createEvent">/createEvent</a><br/>
+            <a href="/findAllEvents">/findAllEvents</a><br/>
 			<hr/>
             <a href="/findCalendar">/findCalendar</a><br/>
             <a href="/login">/login</a><br/>
