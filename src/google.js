@@ -360,7 +360,7 @@ export class Google {
 				const state = encodeURI(JSON.stringify(scopesRemaining));
 				ctx.response.redirect(`/addScope?state=${state}`);
 			} else {
-				ctx.response.redirect(`/`);
+				ctx.response.body = "Login succesful";
 			}
 		});
 	}
@@ -427,7 +427,7 @@ export class Google {
 			if (this.loginResult.access_token) {
 				console.log("Logged in with Refresh Token");
 				if (ctx) {
-					ctx.response.redirect(`/`);
+					ctx.response.body = "Logged in with refresh token completed";
 				} else {
 					return;
 				}
