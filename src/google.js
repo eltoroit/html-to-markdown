@@ -44,7 +44,7 @@ export class Google {
 		});
 	}
 
-	async callback({ router }) {
+	callback({ router }) {
 		router.get("/callback", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			// for (const [key, value] of queryParams) {
@@ -65,38 +65,42 @@ export class Google {
 			});
 			// Save these results to a file (env variable)
 			this.loginResult = await response.json();
-			// console.log(this.loginResult);
+			console.log(this.loginResult);
 
-			const state = queryParams.get("state");
-			ctx.response.redirect(`/addScope?state=${state}`);
+			// Check scopes
+			const scopesGranted = this.loginResult.scope.split(" ");
+			const scopesRequired = JSON.parse(decodeURI(queryParams.get("state")));
+			const scopesRemaining = scopesRequired.filter((scope) => !scopesGranted.includes(scope));
+			if (scopesRemaining.length > 0) {
+				const state = encodeURI(JSON.stringify(scopesRemaining));
+				ctx.response.redirect(`/addScope?state=${state}`);
+			} else {
+				ctx.response.redirect(`/`);
+			}
 		});
 	}
 
-	async addScopes({ router }) {
+	addScopes({ router }) {
 		router.get("/addScope", (ctx) => {
-			const queryParams = ctx.request.url.searchParams;
+			const queryParamsRequest = ctx.request.url.searchParams;
 
 			try {
-				let state = JSON.parse(queryParams.get("state"));
-				if (state.length > 0) {
-					const scope = state.pop();
-					state = encodeURI(JSON.stringify(state));
-					const queryParams = new URLSearchParams({
-						scope,
-						state,
-						prompt: "consent",
-						response_type: "code",
-						include_granted_scopes: "true",
-						client_id: Deno.env.get("CLIENT_ID"),
-						redirect_uri: encodeURI(`${this.serverRoot}/callback`),
-					});
-					const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
-					ctx.response.redirect(url);
-				} else {
-					ctx.response.redirect("/");
-				}
+				let state = JSON.parse(queryParamsRequest.get("state"));
+				const scope = state.pop();
+				state = encodeURI(JSON.stringify(state));
+				const queryParams = new URLSearchParams({
+					scope,
+					state,
+					prompt: "consent",
+					response_type: "code",
+					include_granted_scopes: "true",
+					client_id: Deno.env.get("CLIENT_ID"),
+					redirect_uri: encodeURI(`${this.serverRoot}/callback`),
+				});
+				const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
+				ctx.response.redirect(url);
 			} catch (ex) {
-				ctx.response.body = `ERROR: ${JSON.stringify(ex)}`;
+				ctx.response.body = `ERROR: ${ex.message}\n\n${ex.stack}`;
 			}
 		});
 	}
