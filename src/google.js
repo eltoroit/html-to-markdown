@@ -42,15 +42,7 @@ export class Google {
 				end: {
 					dateTime: end.toJSON(),
 				},
-				// eventType: "outOfOffice",
 				attendees: [{ email: "aperez@salesforce.com" }],
-				// reminders: {
-				// 	useDefault: false,
-				// 	overrides: [
-				// 		{ method: "email", minutes: 24 * 60 },
-				// 		{ method: "popup", minutes: 10 },
-				// 	],
-				// },
 			};
 			const sendUpdates = "none";
 			const response = await this._etFetch({
@@ -63,7 +55,8 @@ export class Google {
 					body: JSON.stringify(event),
 				},
 			});
-			console.log(response);
+			if (this.isDebug) console.log(response);
+			console.log("Event created");
 			if (ctx) {
 				ctx.response.body = "DONE";
 			}
@@ -275,7 +268,8 @@ export class Google {
 	}
 	//#endregion
 
-	async _etFetch({ url, options }) {
+	async _etFetch({ url, options, expectedStatus = 200 }) {
+		let response;
 		const addAuthorization = () => {
 			if (!options.headers) {
 				options.headers = {};
@@ -283,17 +277,26 @@ export class Google {
 			options.headers.Authorization = `Bearer ${this.loginResult?.access_token}`;
 		};
 
+		const makeRequest = async () => {
+			addAuthorization();
+			response = await fetch(url, options);
+		};
+
 		console.log(`Fetching [${options.method}]: ${url}`);
-		addAuthorization();
-		let response = await fetch(url, options);
+		await makeRequest();
 		if (response.status === 401) {
 			// Try to login with refresh token
 			await this._loginWithRefreshToken({});
-			addAuthorization();
-			response = await fetch(url, options);
+			await makeRequest();
 		}
-		response = await response.json();
-		if (this.isDebug) console.log(response);
-		return response;
+		if (response.status === expectedStatus) {
+			response = await response.json();
+			if (this.isDebug) console.log(response);
+			return response;
+		} else {
+			console.error(response);
+			console.error(await response.text());
+			throw new Error(`Unexpected HTTP Status. Expecting [${expectedStatus}], received [${response.status}]`);
+		}
 	}
 }
