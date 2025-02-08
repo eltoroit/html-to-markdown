@@ -1,4 +1,4 @@
-import { Application, Router } from "jsr:@oak/oak";
+// import { Application, Router } from "jsr:@oak/oak";
 
 export class Google {
 	moreRoutes;
@@ -14,20 +14,36 @@ export class Google {
 		this.moreRoutes.push(this.addScopes.bind(this));
 	}
 
-	async login({ router }) {
+	get scopesRequired() {
+		const scopesRequired = [];
+		const scopeRoot = "https://www.googleapis.com";
+
+		// auth/userinfo.email
+		// See your primary Google Account email address
+		scopesRequired.push(`${scopeRoot}/auth/userinfo.email`);
+
+		// Google Calendar API
+		// auth/calendar.calendars.readonly
+		// See the title, description, default time zone, and other properties of Google calendars you have access to
+		scopesRequired.push(`${scopeRoot}/auth/calendar.readonly`);
+
+		// Google Calendar API
+		// auth/calendar.events
+		// View and edit events on all your calendars
+		scopesRequired.push(`${scopeRoot}/auth/calendar.events`);
+
+		// Google Calendar API
+		// auth/calendar.events.owned
+		// See, create, change, and delete events on Google calendars you own
+		scopesRequired.push(`${scopeRoot}/auth/calendar.events.owned`);
+
+		return scopesRequired;
+	}
+
+	login({ router }) {
 		router.get("/login", (ctx) => {
-			const scopes = [];
-			const scopeRoot = "https://www.googleapis.com";
-			// Google Calendar API	  auth/calendar.calendars.readonly
-			// See the title, description, default time zone, and other properties of Google calendars you have access to
-			scopes.push(`${scopeRoot}/auth/calendar.readonly`);
-			// Google Calendar API	  auth/calendar.events
-			// View and edit events on all your calendars
-			scopes.push(`${scopeRoot}/auth/calendar.events`);
-			// Google Calendar API	  auth/calendar.events.owned
-			// See, create, change, and delete events on Google calendars you own
-			scopes.push(`${scopeRoot}/auth/calendar.events.owned`);
-			const scope = encodeURI(scopes.pop());
+			const scopes = this.scopesRequired;
+			const scope = encodeURI(scopes.shift());
 			const state = encodeURI(JSON.stringify(scopes));
 			const queryParams = new URLSearchParams({
 				scope,
@@ -35,6 +51,7 @@ export class Google {
 				response_type: "code",
 				access_type: "offline",
 				include_granted_scopes: "true",
+				login_hint: Deno.env.get("GMAIL"),
 				client_id: Deno.env.get("CLIENT_ID"),
 				redirect_uri: encodeURI(`${this.serverRoot}/callback`),
 			});
@@ -63,8 +80,12 @@ export class Google {
 					redirect_uri: `${this.serverRoot}/callback`,
 				}),
 			});
-			// Save these results to a file (env variable)
 			this.loginResult = await response.json();
+			await Deno.mkdir("secrets", { recursive: true });
+			await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.txt`, JSON.stringify(this.loginResult, null, 4));
+			if (this.loginResult.refresh_token) {
+				await Deno.writeTextFile(`secrets/google.txt`, JSON.stringify(this.loginResult, null, 4));
+			}
 			console.log(this.loginResult);
 
 			// Check scopes
@@ -93,7 +114,9 @@ export class Google {
 					state,
 					prompt: "consent",
 					response_type: "code",
+					access_type: "offline",
 					include_granted_scopes: "true",
+					login_hint: Deno.env.get("GMAIL"),
 					client_id: Deno.env.get("CLIENT_ID"),
 					redirect_uri: encodeURI(`${this.serverRoot}/callback`),
 				});

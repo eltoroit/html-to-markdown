@@ -1,7 +1,7 @@
 {
 	"scripts": {
 		"debug": "deno run --allow-all --inspect-brk --env-file=\"../.env\" ./main.js",
-		"serve": "deno run --allow-env --allow-net --allow-read --env-file ./main.js",
-		"monitor": "deno run --watch --allow-env --allow-net --allow-read --env-file ./main.js"
+		"serve": "deno run --allow-env --allow-net --allow-read --allow-write --env-file ./main.js",
+		"monitor": "deno run --watch --allow-all --env-file ./main.js"
 	}
 }
