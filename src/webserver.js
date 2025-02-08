@@ -4,13 +4,13 @@ export class Webserver {
 	router = new Router();
 
 	constructor({ moreRoutes }) {
-		this._initializeServer({ moreRoutes });
+		this.#initializeServer({ moreRoutes });
 	}
 
-	async _initializeServer({ moreRoutes }) {
+	async #initializeServer({ moreRoutes }) {
 		this.router = new Router();
 		const app = new Application();
-		this._makeRoutes({ moreRoutes });
+		this.#makeRoutes({ moreRoutes });
 		app.use(this.router.routes());
 		app.use(this.router.allowedMethods());
 
@@ -39,15 +39,15 @@ export class Webserver {
 		}
 	}
 
-	_makeRoutes({ moreRoutes }) {
-		this._hello();
-		this._convert();
+	#makeRoutes({ moreRoutes }) {
+		this.#hello();
+		this.#convert();
 		for (const route of moreRoutes) {
 			route({ router: this.router });
 		}
 	}
 
-	_hello() {
+	#hello() {
 		this.router.get("/", (ctx) => {
 			ctx.response.body = `
         <!DOCTYPE html>
@@ -63,7 +63,7 @@ export class Webserver {
 		});
 	}
 
-	_convert() {
+	#convert() {
 		this.router.post("/convert", async (ctx) => {
 			try {
 				const body = await ctx.request.body.text();

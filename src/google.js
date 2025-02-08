@@ -11,72 +11,72 @@ export class Google {
 		this.serverRoot = Deno.env.get("SERVER_ROOT");
 
 		// Login
-		moreRoutes.push(this._loginGET.bind(this));
-		moreRoutes.push(this._callbackGET.bind(this));
-		moreRoutes.push(this._addScopesGET.bind(this));
+		moreRoutes.push(this.#loginGET.bind(this));
+		moreRoutes.push(this.#callbackGET.bind(this));
+		moreRoutes.push(this.#addScopesGET.bind(this));
 
 		// Calendar events
-		moreRoutes.push(this._getEventGET.bind(this));
-		moreRoutes.push(this._findEventsGET.bind(this));
-		moreRoutes.push(this._findCalendarGET.bind(this));
-		moreRoutes.push(this._createEventPOST.bind(this));
-		moreRoutes.push(this._updateEventPATCH.bind(this));
-		moreRoutes.push(this._deleteEventDELETE.bind(this));
+		moreRoutes.push(this.#getEventGET.bind(this));
+		moreRoutes.push(this.#findEventsGET.bind(this));
+		moreRoutes.push(this.#findCalendarGET.bind(this));
+		moreRoutes.push(this.#createEventPOST.bind(this));
+		moreRoutes.push(this.#updateEventPATCH.bind(this));
+		moreRoutes.push(this.#deleteEventDELETE.bind(this));
 	}
 
-	_findCalendarGET({ router }) {
+	#findCalendarGET({ router }) {
 		router.get("/findCalendar", async (ctx) => {
-			await this._findCalendar({ ctx });
+			await this.#findCalendar({ ctx });
 		});
 	}
 
-	_findEventsGET({ router }) {
+	#findEventsGET({ router }) {
 		router.get("/findEvents", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			const query = queryParams.get("query");
-			await this._findEvents({ ctx, query });
+			await this.#findEvents({ ctx, query });
 		});
 	}
 
-	_getEventGET({ router }) {
+	#getEventGET({ router }) {
 		router.get("/event", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
-			await this._getEvent({ ctx, id });
+			await this.#getEvent({ ctx, id });
 		});
 	}
 
-	_createEventPOST({ router }) {
+	#createEventPOST({ router }) {
 		router.post("/event", async (ctx) => {
 			let { start, end, employeeName, employeeEmail } = await ctx.request.body.json();
 			start = new Date(start);
 			end = new Date(end);
 			console.log(start, end, employeeName, employeeEmail);
-			await this._createEvent({ ctx, start, end, employeeName, employeeEmail });
+			await this.#createEvent({ ctx, start, end, employeeName, employeeEmail });
 		});
 	}
 
-	_updateEventPATCH({ router }) {
+	#updateEventPATCH({ router }) {
 		router.patch("/event", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
 			const { start, end } = await ctx.request.body.json();
 			console.log(id, start, end);
-			await this._updateEvent({ ctx, id, start, end });
+			await this.#updateEvent({ ctx, id, start, end });
 		});
 	}
 
-	_deleteEventDELETE({ router }) {
+	#deleteEventDELETE({ router }) {
 		router.delete("/event", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
-			await this._deleteEvent({ ctx, id });
+			await this.#deleteEvent({ ctx, id });
 		});
 	}
 
-	async _findCalendar({ ctx }) {
+	async #findCalendar({ ctx }) {
 		const calendarName = "Agentforce PTO";
-		let calendars = await this._etFetch({
+		let calendars = await this.#etFetch({
 			url: "https://www.googleapis.com/calendar/v3/users/me/calendarList",
 			options: {
 				method: "GET",
@@ -94,16 +94,16 @@ export class Google {
 		}
 	}
 
-	async _findEvents({ ctx, query }) {
+	async #findEvents({ ctx, query }) {
 		if (!this.calendarId) {
-			await this._findCalendar({});
+			await this.#findCalendar({});
 		}
 
 		let url = `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events`;
 		if (query?.length > 0) {
 			url += `?q=${query}`;
 		}
-		const events = await this._etFetch({
+		const events = await this.#etFetch({
 			url,
 			options: {
 				method: "GET",
@@ -134,16 +134,16 @@ export class Google {
 		}
 	}
 
-	async _getEvent({ ctx, id }) {
+	async #getEvent({ ctx, id }) {
 		if (!id) {
 			throw new Error(`Finding event by ID without an ID is not allowed!`);
 		}
 
 		if (!this.calendarId) {
-			await this._findCalendar({});
+			await this.#findCalendar({});
 		}
 
-		const event = await this._etFetch({
+		const event = await this.#etFetch({
 			url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events/${id}`,
 			options: {
 				method: "GET",
@@ -167,9 +167,9 @@ export class Google {
 		}
 	}
 
-	async _createEvent({ ctx, start, end, employeeName, employeeEmail }) {
+	async #createEvent({ ctx, start, end, employeeName, employeeEmail }) {
 		if (!this.calendarId) {
-			await this._findCalendar({});
+			await this.#findCalendar({});
 		}
 
 		const event = {
@@ -184,7 +184,7 @@ export class Google {
 			attendees: [{ email: employeeEmail, responseStatus: "accepted" }],
 		};
 		const sendUpdates = "none";
-		const response = await this._etFetch({
+		const response = await this.#etFetch({
 			url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events?sendUpdates=${sendUpdates}`,
 			options: {
 				method: "POST",
@@ -201,20 +201,20 @@ export class Google {
 		}
 	}
 
-	async _updateEvent({ ctx, id, start, end }) {
+	async #updateEvent({ ctx, id, start, end }) {
 		if (!id) {
 			throw new Error(`Updating event by ID without an ID is not allowed!`);
 		}
 
 		if (!this.calendarId) {
-			await this._findCalendar({});
+			await this.#findCalendar({});
 		}
-		const event = await this._getEvent({ id });
+		const event = await this.#getEvent({ id });
 		if (event) {
 			event.start.dateTime = new Date(start).toJSON();
 			event.end.dateTime = new Date(end).toJSON();
 			const sendUpdates = "none";
-			const response = await this._etFetch({
+			const response = await this.#etFetch({
 				url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events/${id}?sendUpdates=${sendUpdates}`,
 				options: {
 					method: "PUT",
@@ -234,18 +234,18 @@ export class Google {
 		}
 	}
 
-	async _deleteEvent({ ctx, id }) {
+	async #deleteEvent({ ctx, id }) {
 		if (!id) {
 			throw new Error(`Deleting event by ID without an ID is not allowed!`);
 		}
 
 		if (!this.calendarId) {
-			await this._findCalendar({});
+			await this.#findCalendar({});
 		}
 
-		const event = await this._getEvent({ id });
+		const event = await this.#getEvent({ id });
 		if (event) {
-			await this._etFetch({
+			await this.#etFetch({
 				url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events/${id}`,
 				options: {
 					method: "DELETE",
@@ -262,7 +262,7 @@ export class Google {
 	}
 
 	//#region LOGIN
-	get _scopesRequired() {
+	get #scopesRequired() {
 		const scopesRequired = [];
 		const scopeRoot = "https://www.googleapis.com";
 
@@ -288,10 +288,10 @@ export class Google {
 		return scopesRequired;
 	}
 
-	_loginGET({ router }) {
+	#loginGET({ router }) {
 		router.get("/login", async (ctx) => {
 			const loginWithoutRefreshToken = () => {
-				const scopes = this._scopesRequired;
+				const scopes = this.#scopesRequired;
 				const scope = encodeURI(scopes.shift());
 				const state = encodeURI(JSON.stringify(scopes));
 				const queryParams = new URLSearchParams({
@@ -310,7 +310,7 @@ export class Google {
 			};
 
 			try {
-				await this._loginWithRefreshToken({ ctx });
+				await this.#loginWithRefreshToken({ ctx });
 			} catch (ex) {
 				console.error(ex);
 				console.error("Unable to login with Refresh Token");
@@ -319,7 +319,7 @@ export class Google {
 		});
 	}
 
-	_callbackGET({ router }) {
+	#callbackGET({ router }) {
 		const saveLoginResults = async () => {
 			await Deno.mkdir("secrets", { recursive: true });
 			await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.json`, JSON.stringify(this.loginResult, null, 4));
@@ -365,7 +365,7 @@ export class Google {
 		});
 	}
 
-	_addScopesGET({ router }) {
+	#addScopesGET({ router }) {
 		router.get("/addScope", (ctx) => {
 			const queryParamsRequest = ctx.request.url.searchParams;
 
@@ -392,7 +392,7 @@ export class Google {
 		});
 	}
 
-	async _loginWithRefreshToken({ ctx }) {
+	async #loginWithRefreshToken({ ctx }) {
 		const getRefreshToken = async () => {
 			try {
 				const path = "secrets/google.json";
@@ -445,7 +445,7 @@ export class Google {
 	}
 	//#endregion
 
-	async _etFetch({ url, options, expectedStatus = 200 }) {
+	async #etFetch({ url, options, expectedStatus = 200 }) {
 		let response;
 		const addAuthorization = () => {
 			if (!options.headers) {
@@ -468,7 +468,7 @@ export class Google {
 		await makeRequest();
 		if (response.status === 401) {
 			// Try to login with refresh token
-			await this._loginWithRefreshToken({});
+			await this.#loginWithRefreshToken({});
 			await makeRequest();
 		}
 		if (response.status === expectedStatus) {
