@@ -1,19 +1,96 @@
 // import { Application, Router } from "jsr:@oak/oak";
 
 export class Google {
-	moreRoutes;
 	serverRoot;
+	calendarId;
 	loginResult;
+	isDebug = false;
 
 	constructor({ moreRoutes }) {
-		this.moreRoutes = moreRoutes;
 		this.serverRoot = Deno.env.get("SERVER_ROOT");
 
-		this.moreRoutes.push(this._login.bind(this));
-		this.moreRoutes.push(this._callback.bind(this));
-		this.moreRoutes.push(this._addScopes.bind(this));
+		// Login
+		moreRoutes.push(this._login.bind(this));
+		moreRoutes.push(this._callback.bind(this));
+		moreRoutes.push(this._addScopes.bind(this));
+
+		// Calendars
+		moreRoutes.push(this._findCalendarWS.bind(this));
+		moreRoutes.push(this._createEvent.bind(this));
 	}
 
+	_findCalendarWS({ router }) {
+		router.get("/findCalendar", async (ctx) => {
+			await this._findCalendar({ ctx });
+		});
+	}
+
+	_createEvent({ router }) {
+		router.get("/createEvent", async (ctx) => {
+			if (!this.calendarId) {
+				await this._findCalendar({});
+			}
+			const start = new Date();
+			let end = new Date();
+			end = new Date(end.setHours(end.getHours() + 1));
+			const event = {
+				summary: "PTO: Andres Perez",
+				description: "Andres Perez",
+				start: {
+					dateTime: start.toJSON(),
+				},
+				end: {
+					dateTime: end.toJSON(),
+				},
+				// eventType: "outOfOffice",
+				attendees: [{ email: "aperez@salesforce.com" }],
+				// reminders: {
+				// 	useDefault: false,
+				// 	overrides: [
+				// 		{ method: "email", minutes: 24 * 60 },
+				// 		{ method: "popup", minutes: 10 },
+				// 	],
+				// },
+			};
+			const sendUpdates = "none";
+			const response = await this._etFetch({
+				url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events?sendUpdates=${sendUpdates}`,
+				options: {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(event),
+				},
+			});
+			console.log(response);
+			if (ctx) {
+				ctx.response.body = "DONE";
+			}
+		});
+	}
+
+	async _findCalendar({ ctx }) {
+		const calendarName = "Agentforce PTO";
+		let calendars = await this._etFetch({
+			url: "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+			options: {
+				method: "GET",
+			},
+		});
+		calendars = calendars.items.filter((calendar) => calendar.summary === calendarName);
+		if (calendars.length === 1) {
+			this.calendarId = calendars[0].id;
+			console.log(`Calendar: ${this.calendarId}`);
+			if (ctx) {
+				ctx.response.body = "DONE";
+			}
+		} else {
+			throw new Error(`Could not find calendar named [${calendarName}]`);
+		}
+	}
+
+	//#region LOGIN
 	get _scopesRequired() {
 		const scopesRequired = [];
 		const scopeRoot = "https://www.googleapis.com";
@@ -81,9 +158,11 @@ export class Google {
 		};
 		router.get("/callback", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
-			// for (const [key, value] of queryParams) {
-			// 	console.log(`${key}: ${value}`);
-			// }
+			if (this.isDebug) {
+				for (const [key, value] of queryParams) {
+					console.log(`${key}: ${value}`);
+				}
+			}
 			const response = await fetch("https://oauth2.googleapis.com/token", {
 				method: "POST",
 				headers: {
@@ -98,7 +177,8 @@ export class Google {
 				}),
 			});
 			this.loginResult = await response.json();
-			console.log(this.loginResult);
+			console.log("Login Callback");
+			if (this.isDebug) console.log(this.loginResult);
 			await saveLoginResults();
 
 			// Check scopes
@@ -172,7 +252,7 @@ export class Google {
 				}),
 			});
 			this.loginResult = await response.json();
-			console.log(this.loginResult);
+			if (this.isDebug) console.log(this.loginResult);
 			if (this.loginResult.access_token) {
 				console.log("Logged in with Refresh Token");
 				if (ctx) {
@@ -192,5 +272,28 @@ export class Google {
 		} else {
 			throw new Error("Refresh Token NOT found");
 		}
+	}
+	//#endregion
+
+	async _etFetch({ url, options }) {
+		const addAuthorization = () => {
+			if (!options.headers) {
+				options.headers = {};
+			}
+			options.headers.Authorization = `Bearer ${this.loginResult?.access_token}`;
+		};
+
+		console.log(`Fetching [${options.method}]: ${url}`);
+		addAuthorization();
+		let response = await fetch(url, options);
+		if (response.status === 401) {
+			// Try to login with refresh token
+			await this._loginWithRefreshToken({});
+			addAuthorization();
+			response = await fetch(url, options);
+		}
+		response = await response.json();
+		if (this.isDebug) console.log(response);
+		return response;
 	}
 }
