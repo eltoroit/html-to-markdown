@@ -3,7 +3,7 @@
 export class Google {
 	moreRoutes;
 	serverRoot;
-	_loginResult;
+	loginResult;
 
 	constructor({ moreRoutes }) {
 		this.moreRoutes = moreRoutes;
@@ -42,7 +42,7 @@ export class Google {
 
 	_login({ router }) {
 		router.get("/login", async (ctx) => {
-			const withoutRefreshtoken = () => {
+			const loginWithoutRefreshToken = () => {
 				const scopes = this._scopesRequired;
 				const scope = encodeURI(scopes.shift());
 				const state = encodeURI(JSON.stringify(scopes));
@@ -60,49 +60,25 @@ export class Google {
 				const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
 				ctx.response.redirect(url);
 			};
-			const withRefreshToken = async (refresh_token) => {
-				const response = await fetch("https://oauth2.googleapis.com/token", {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/x-www-form-urlencoded",
-					},
-					body: new URLSearchParams({
-						grant_type: "refresh_token",
-						client_id: Deno.env.get("CLIENT_ID"),
-						client_secret: Deno.env.get("CLIENT_SECRET"),
-						refresh_token,
-					}),
-				});
-				this.loginResult = await response.json();
-				console.log(this.loginResult);
-				ctx.response.redirect(`/`);
-			};
-			const getRefreshToken = async () => {
-				try {
-					const path = "secrets/google.json";
-					await Deno.lstat(path);
-					const json = await Deno.readTextFile(path);
-					const refresh_token = JSON.parse(json).refresh_token;
-					return refresh_token;
-				} catch (error) {
-					if (error instanceof Deno.errors.NotFound) {
-						return null;
-					} else {
-						throw error; // Re-throw unexpected errors
-					}
-				}
-			};
 
-			const refresh_token = await getRefreshToken();
-			if (refresh_token) {
-				await withRefreshToken(refresh_token);
-			} else {
-				await withoutRefreshtoken();
+			try {
+				await this._loginWithRefreshToken({ ctx });
+			} catch (ex) {
+				console.error(ex);
+				console.error("Unable to login with Refresh Token");
+				await loginWithoutRefreshToken();
 			}
 		});
 	}
 
 	_callback({ router }) {
+		const saveLoginResults = async () => {
+			await Deno.mkdir("secrets", { recursive: true });
+			await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.json`, JSON.stringify(this.loginResult, null, 4));
+			if (this.loginResult.refresh_token) {
+				await Deno.writeTextFile(`secrets/google.json`, JSON.stringify(this.loginResult, null, 4));
+			}
+		};
 		router.get("/callback", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			// for (const [key, value] of queryParams) {
@@ -122,12 +98,8 @@ export class Google {
 				}),
 			});
 			this.loginResult = await response.json();
-			await Deno.mkdir("secrets", { recursive: true });
-			await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.json`, JSON.stringify(this.loginResult, null, 4));
-			if (this.loginResult.refresh_token) {
-				await Deno.writeTextFile(`secrets/google.json`, JSON.stringify(this.loginResult, null, 4));
-			}
 			console.log(this.loginResult);
+			await saveLoginResults();
 
 			// Check scopes
 			const scopesGranted = this.loginResult.scope.split(" ");
@@ -167,5 +139,58 @@ export class Google {
 				ctx.response.body = `ERROR: ${ex.message}\n\n${ex.stack}`;
 			}
 		});
+	}
+
+	async _loginWithRefreshToken({ ctx }) {
+		const getRefreshToken = async () => {
+			try {
+				const path = "secrets/google.json";
+				await Deno.lstat(path);
+				const json = await Deno.readTextFile(path);
+				const refresh_token = JSON.parse(json).refresh_token;
+				return refresh_token;
+			} catch (error) {
+				if (error instanceof Deno.errors.NotFound) {
+					return null;
+				} else {
+					throw error; // Re-throw unexpected errors
+				}
+			}
+		};
+
+		const login = async (refresh_token) => {
+			const response = await fetch("https://oauth2.googleapis.com/token", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/x-www-form-urlencoded",
+				},
+				body: new URLSearchParams({
+					grant_type: "refresh_token",
+					client_id: Deno.env.get("CLIENT_ID"),
+					client_secret: Deno.env.get("CLIENT_SECRET"),
+					refresh_token,
+				}),
+			});
+			this.loginResult = await response.json();
+			console.log(this.loginResult);
+			if (this.loginResult.access_token) {
+				console.log("Logged in with Refresh Token");
+				if (ctx) {
+					// ctx.response.body = "DONE";
+					ctx.response.redirect(`/`);
+				} else {
+					return;
+				}
+			} else {
+				throw new Error("Access Token NOT found");
+			}
+		};
+
+		const refresh_token = await getRefreshToken();
+		if (refresh_token) {
+			await login(refresh_token);
+		} else {
+			throw new Error("Refresh Token NOT found");
+		}
 	}
 }
