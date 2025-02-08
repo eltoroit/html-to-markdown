@@ -15,51 +15,32 @@ export class Google {
 		moreRoutes.push(this._addScopes.bind(this));
 
 		// Calendars
-		moreRoutes.push(this._findCalendarWS.bind(this));
-		moreRoutes.push(this._createEvent.bind(this));
+		moreRoutes.push(this._createEventGET.bind(this));
+		moreRoutes.push(this._createEventPOST.bind(this));
+		moreRoutes.push(this._findCalendarGET.bind(this));
 	}
 
-	_findCalendarWS({ router }) {
+	_findCalendarGET({ router }) {
 		router.get("/findCalendar", async (ctx) => {
 			await this._findCalendar({ ctx });
 		});
 	}
 
-	_createEvent({ router }) {
+	_createEventGET({ router }) {
 		router.get("/createEvent", async (ctx) => {
-			if (!this.calendarId) {
-				await this._findCalendar({});
-			}
 			const start = new Date();
-			let end = new Date();
-			end = new Date(end.setHours(end.getHours() + 1));
-			const event = {
-				summary: "PTO: Andres Perez",
-				description: "Andres Perez",
-				start: {
-					dateTime: start.toJSON(),
-				},
-				end: {
-					dateTime: end.toJSON(),
-				},
-				attendees: [{ email: "aperez@salesforce.com" }],
-			};
-			const sendUpdates = "none";
-			const response = await this._etFetch({
-				url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events?sendUpdates=${sendUpdates}`,
-				options: {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify(event),
-				},
-			});
-			if (this.isDebug) console.log(response);
-			console.log("Event created");
-			if (ctx) {
-				ctx.response.body = "DONE";
-			}
+			const end = new Date(new Date(start).setHours(start.getHours() + 1));
+			await this._createEvent({ ctx, start, end, employeeName: "Andres Perez", employeeEmail: "aperez@salesforce.com" });
+		});
+	}
+
+	_createEventPOST({ router }) {
+		router.post("/createEvent", async (ctx) => {
+			let { start, end, employeeName, employeeEmail } = await ctx.request.body.json();
+			start = new Date(start);
+			end = new Date(end);
+			console.log(start, end, employeeName, employeeEmail);
+			await this._createEvent({ ctx, start, end, employeeName, employeeEmail });
 		});
 	}
 
@@ -80,6 +61,40 @@ export class Google {
 			}
 		} else {
 			throw new Error(`Could not find calendar named [${calendarName}]`);
+		}
+	}
+
+	async _createEvent({ ctx, start, end, employeeName, employeeEmail }) {
+		if (!this.calendarId) {
+			await this._findCalendar({});
+		}
+
+		const event = {
+			description: employeeName,
+			summary: `PTO: ${employeeName}`,
+			start: {
+				dateTime: start.toJSON(),
+			},
+			end: {
+				dateTime: end.toJSON(),
+			},
+			attendees: [{ email: employeeEmail, responseStatus: "accepted" }],
+		};
+		const sendUpdates = "none";
+		const response = await this._etFetch({
+			url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events?sendUpdates=${sendUpdates}`,
+			options: {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(event),
+			},
+		});
+		if (this.isDebug) console.log(response);
+		console.log("Event created");
+		if (ctx) {
+			ctx.response.body = "DONE";
 		}
 	}
 
