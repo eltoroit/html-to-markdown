@@ -4,10 +4,11 @@ export class Google {
 	serverRoot;
 	calendarId;
 	loginResult;
-	isDebug = false;
+	isDebug = true;
 	itemFields = ["id", "summary", "description", "start", "end", "attendees"];
 
-	constructor({ moreRoutes }) {
+	constructor({ moreRoutes, isDebug }) {
+		this.isDebug = isDebug;
 		this.serverRoot = Deno.env.get("SERVER_ROOT");
 
 		// Login
@@ -24,6 +25,7 @@ export class Google {
 		moreRoutes.push(this.#deleteEventDELETE.bind(this));
 	}
 
+	//#region CALENDAR
 	#findCalendarGET({ router }) {
 		router.get("/findCalendar", async (ctx) => {
 			await this.#findCalendar({ ctx });
@@ -260,30 +262,24 @@ export class Google {
 			throw new Error(`Event with ID [${id}] was NOT found to be deleted`);
 		}
 	}
+	//#endregion
 
 	//#region LOGIN
 	get #scopesRequired() {
 		const scopesRequired = [];
 		const scopeRoot = "https://www.googleapis.com";
 
-		// auth/userinfo.email
 		// See your primary Google Account email address
 		scopesRequired.push(`${scopeRoot}/auth/userinfo.email`);
 
-		// Google Calendar API
-		// auth/calendar.calendars.readonly
-		// See the title, description, default time zone, and other properties of Google calendars you have access to
+		// Google Calendar API | See, create, change, and delete events on Google calendars you own
+		scopesRequired.push(`${scopeRoot}/auth/calendar.events.owned`);
+
+		// Google Calendar API | See the title, description, default time zone, and other properties of Google calendars you have access to
 		scopesRequired.push(`${scopeRoot}/auth/calendar.readonly`);
 
-		// Google Calendar API
-		// auth/calendar.events
-		// View and edit events on all your calendars
-		scopesRequired.push(`${scopeRoot}/auth/calendar.events`);
-
-		// Google Calendar API
-		// auth/calendar.events.owned
-		// See, create, change, and delete events on Google calendars you own
-		scopesRequired.push(`${scopeRoot}/auth/calendar.events.owned`);
+		// // Google Calendar API | View and edit events on all your calendars
+		// scopesRequired.push(`${scopeRoot}/auth/calendar.events`);
 
 		return scopesRequired;
 	}
@@ -304,6 +300,7 @@ export class Google {
 					client_id: Deno.env.get("CLIENT_ID"),
 					redirect_uri: encodeURI(`${this.serverRoot}/callback`),
 				});
+				if (this.isDebug) console.log(`Callback Server: ${this.serverRoot}`);
 
 				const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
 				ctx.response.redirect(url);
@@ -321,10 +318,15 @@ export class Google {
 
 	#callbackGET({ router }) {
 		const saveLoginResults = async () => {
-			await Deno.mkdir("secrets", { recursive: true });
-			await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.json`, JSON.stringify(this.loginResult, null, 4));
-			if (this.loginResult.refresh_token) {
-				await Deno.writeTextFile(`secrets/google.json`, JSON.stringify(this.loginResult, null, 4));
+			if (this.isDebug) {
+				await Deno.mkdir("secrets", { recursive: true });
+				await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.json`, JSON.stringify(this.loginResult, null, 4));
+				if (this.loginResult.refresh_token) {
+					await Deno.writeTextFile(`secrets/google.json`, JSON.stringify(this.loginResult, null, 4));
+				}
+			}
+			if (this.loginResult?.refresh_token) {
+				console.log(`Refresh Token [${this.loginResult.refresh_token}]`);
 			}
 		};
 		router.get("/callback", async (ctx) => {
@@ -347,6 +349,7 @@ export class Google {
 					redirect_uri: `${this.serverRoot}/callback`,
 				}),
 			});
+			if (this.isDebug) console.log(`Callback Server: ${this.serverRoot}`);
 			this.loginResult = await response.json();
 			console.log("Login Callback");
 			if (this.isDebug) console.log(this.loginResult);
@@ -357,8 +360,20 @@ export class Google {
 			const scopesRequired = JSON.parse(decodeURI(queryParams.get("state")));
 			const scopesRemaining = scopesRequired.filter((scope) => !scopesGranted.includes(scope));
 			if (scopesRemaining.length > 0) {
+				// ctx.response.redirect(`/addScope?state=${state}`);
 				const state = encodeURI(JSON.stringify(scopesRemaining));
-				ctx.response.redirect(`/addScope?state=${state}`);
+				const nextUrl = `/addScope?state=${state}`;
+				let nextScope = scopesRemaining[0].split("/");
+				nextScope = nextScope[nextScope.length - 1];
+				ctx.response.body = `
+<!DOCTYPE html>
+<html>
+	<head><title>Agentforce PTO</title><head>
+	<body>
+	<h1>More requests are needed</h1>
+	<a href="${nextUrl}">Request scope <b>${nextScope}</b></a><br/>
+	</body>
+</html>`;
 			} else {
 				ctx.response.body = "Login succesful";
 			}
@@ -371,7 +386,7 @@ export class Google {
 
 			try {
 				let state = JSON.parse(queryParamsRequest.get("state"));
-				const scope = state.pop();
+				const scope = state.shift();
 				state = encodeURI(JSON.stringify(state));
 				const queryParams = new URLSearchParams({
 					scope,
@@ -384,6 +399,7 @@ export class Google {
 					client_id: Deno.env.get("CLIENT_ID"),
 					redirect_uri: encodeURI(`${this.serverRoot}/callback`),
 				});
+				if (this.isDebug) console.log(`Callback Server: ${this.serverRoot}`);
 				const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
 				ctx.response.redirect(url);
 			} catch (ex) {
@@ -395,10 +411,11 @@ export class Google {
 	async #loginWithRefreshToken({ ctx }) {
 		const getRefreshToken = async () => {
 			try {
-				const path = "secrets/google.json";
-				await Deno.lstat(path);
-				const json = await Deno.readTextFile(path);
-				const refresh_token = JSON.parse(json).refresh_token;
+				// const path = "secrets/google.json";
+				// await Deno.lstat(path);
+				// const json = await Deno.readTextFile(path);
+				// const refresh_token = JSON.parse(json).refresh_token;
+				const refresh_token = Deno.env.get("REFRESH_TOKEN");
 				return refresh_token;
 			} catch (error) {
 				if (error instanceof Deno.errors.NotFound) {

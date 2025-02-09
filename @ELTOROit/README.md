@@ -26,7 +26,7 @@ openssl req -x509 -out localhost.crt -keyout localhost.key -newkey rsa:2048 -nod
 
 # GOOGLE
 
--   You will get the refresh token, only the first time you authorize the app. Revoke here: https://myaccount.google.com/connections
+-   You will get the refresh token ONLY the first time you authorize the app. Revoke permissions here: https://myaccount.google.com/connections
 
 # SALESFORCE
 

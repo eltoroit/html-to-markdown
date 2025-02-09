@@ -1,54 +1,35 @@
 import { Application, Router } from "jsr:@oak/oak";
 
 export class Webserver {
-	router = new Router();
+	#isDebug = false;
+	#router = new Router();
 
-	constructor({ moreRoutes }) {
+	constructor({ moreRoutes, isDebug }) {
+		this.#isDebug = isDebug;
 		this.#initializeServer({ moreRoutes });
 	}
 
 	async #initializeServer({ moreRoutes }) {
-		this.router = new Router();
+		this.#router = new Router();
 		const app = new Application();
 		this.#makeRoutes({ moreRoutes });
-		app.use(this.router.routes());
-		app.use(this.router.allowedMethods());
+		app.use(this.#router.routes());
+		app.use(this.#router.allowedMethods());
 
 		const port = parseInt(Deno.env.get("PORT") || "3000");
-		console.log(`*** ${Deno.env.get("SERVER")} ***`);
-		if (Deno.env.get("SERVER") === "LOCALHOST") {
-			const certs = {
-				private: "./cert/localhost.key",
-				public: "./cert/localhost.crt",
-			};
-			for (const cert of Object.keys(certs)) {
-				certs[cert] = await Deno.realPath(certs[cert]);
-				certs[cert] = await Deno.readTextFile(certs[cert]);
-			}
-
-			app.listen({
-				port,
-				secure: true,
-				cert: certs.public,
-				key: certs.private,
-			});
-			console.log(`Server running on LOCALHOST port ${port}: https://localhost:${port}`);
-		} else {
-			app.listen({ port });
-			console.log(`Server running on HEROKU ${port}: http://localhost:${port}`);
-		}
+		this.#serveHTTP({ app, port });
+		// this.#serveHTTPS({ app, port });
 	}
 
 	#makeRoutes({ moreRoutes }) {
 		this.#hello();
-		this.#convert();
 		for (const route of moreRoutes) {
-			route({ router: this.router });
+			route({ router: this.#router });
 		}
 	}
 
 	#hello() {
-		this.router.get("/", (ctx) => {
+		this.#router.get("/", (ctx) => {
 			ctx.response.body = `
         <!DOCTYPE html>
         <html>
@@ -63,31 +44,28 @@ export class Webserver {
 		});
 	}
 
-	#convert() {
-		this.router.post("/convert", async (ctx) => {
-			try {
-				const body = await ctx.request.body.text();
+	#serveHTTP({ app, port }) {
+		app.listen({ port });
+		console.log(`Server running on HEROKU ${port}: http://localhost:${port}`);
+	}
 
-				if (!body) {
-					ctx.response.status = 400;
-					ctx.response.body = {
-						error: "Missing request body",
-					};
-					return;
-				}
+	async #serveHTTPS({ app, port }) {
+		const certs = {
+			private: "./cert/localhost.key",
+			public: "./cert/localhost.crt",
+		};
+		for (const cert of Object.keys(certs)) {
+			certs[cert] = await Deno.realPath(certs[cert]);
+			certs[cert] = await Deno.readTextFile(certs[cert]);
+		}
 
-				const markdown = `Pong: ${body}`;
-
-				ctx.response.body = markdown;
-			} catch (error) {
-				console.error("Conversion error:", error);
-				ctx.response.status = 500;
-				ctx.response.body = {
-					error: "Failed to convert HTML to Markdown",
-					details: error.message,
-				};
-			}
+		app.listen({
+			port,
+			secure: true,
+			cert: certs.public,
+			key: certs.private,
 		});
+		console.log(`Server running on LOCALHOST port ${port}: https://localhost:${port}`);
 	}
 }
 

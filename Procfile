@@ -1,1 +1,1 @@
-web: deno run --allow-env --allow-net ./main.js
+web: deno task serve
