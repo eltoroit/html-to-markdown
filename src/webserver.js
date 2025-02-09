@@ -22,13 +22,13 @@ export class Webserver {
 	}
 
 	#makeRoutes({ moreRoutes }) {
-		this.#hello();
+		this.#homepage();
 		for (const route of moreRoutes) {
 			route({ router: this.#router });
 		}
 	}
 
-	#hello() {
+	#homepage() {
 		this.#router.get("/", (ctx) => {
 			ctx.response.body = `
         <!DOCTYPE html>
@@ -37,7 +37,8 @@ export class Webserver {
           <body>
             <h1>Agentforce PTO</h1>
             <a href="/login">/login</a><br/>
-            <a href="/findCalendar">/findCalendar</a><br/>
+			<hr/>
+            <a href="/clearCalendar">/clearCalendar</a><br/>
 			<hr/>
           </body>
         </html>`;

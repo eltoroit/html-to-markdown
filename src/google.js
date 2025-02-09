@@ -2,9 +2,9 @@
 
 export class Google {
 	#serverRoot;
-	#calendarId;
 	#loginResult;
 	#isDebug = true;
+	#defaultCalendar = {};
 	#itemFields = ["id", "summary", "description", "start", "end", "attendees"];
 
 	constructor({ moreRoutes, isDebug }) {
@@ -12,27 +12,29 @@ export class Google {
 		this.#serverRoot = Deno.env.get("SERVER_ROOT");
 
 		// Login
-		moreRoutes.push(this.#loginGET.bind(this));
-		moreRoutes.push(this.#callbackGET.bind(this));
-		moreRoutes.push(this.#addScopesGET.bind(this));
+		moreRoutes.push(this.#login_GET.bind(this));
+		moreRoutes.push(this.#callback_GET.bind(this));
+		moreRoutes.push(this.#addScopes_GET.bind(this));
 
 		// Calendar events
-		moreRoutes.push(this.#getEventGET.bind(this));
-		moreRoutes.push(this.#findEventsGET.bind(this));
-		moreRoutes.push(this.#findCalendarGET.bind(this));
-		moreRoutes.push(this.#createEventPOST.bind(this));
-		moreRoutes.push(this.#updateEventPATCH.bind(this));
-		moreRoutes.push(this.#deleteEventDELETE.bind(this));
+		moreRoutes.push(this.#getEvent_GET.bind(this));
+		moreRoutes.push(this.#findEvents_GET.bind(this));
+		moreRoutes.push(this.#requestPTO_POST.bind(this));
+		moreRoutes.push(this.#findCalendar_GET.bind(this));
+		moreRoutes.push(this.#createEvent_POST.bind(this));
+		moreRoutes.push(this.#updateEvent_PATCH.bind(this));
+		moreRoutes.push(this.#clearCalendar_GET.bind(this));
+		moreRoutes.push(this.#deleteEvent_DELETE.bind(this));
 	}
 
-	//#region CALENDAR
-	#findCalendarGET({ router }) {
+	//#region CALENDAR ROUTER
+	#findCalendar_GET({ router }) {
 		router.get("/findCalendar", async (ctx) => {
 			await this.#findCalendar({ ctx });
 		});
 	}
 
-	#findEventsGET({ router }) {
+	#findEvents_GET({ router }) {
 		router.get("/findEvents", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			const query = queryParams.get("query");
@@ -40,7 +42,7 @@ export class Google {
 		});
 	}
 
-	#getEventGET({ router }) {
+	#getEvent_GET({ router }) {
 		router.get("/event", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
@@ -48,7 +50,7 @@ export class Google {
 		});
 	}
 
-	#createEventPOST({ router }) {
+	#createEvent_POST({ router }) {
 		router.post("/event", async (ctx) => {
 			let { start, end, employeeName, employeeEmail } = await ctx.request.body.json();
 			start = new Date(start);
@@ -58,7 +60,7 @@ export class Google {
 		});
 	}
 
-	#updateEventPATCH({ router }) {
+	#updateEvent_PATCH({ router }) {
 		router.patch("/event", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
@@ -68,7 +70,7 @@ export class Google {
 		});
 	}
 
-	#deleteEventDELETE({ router }) {
+	#deleteEvent_DELETE({ router }) {
 		router.delete("/event", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
@@ -76,14 +78,60 @@ export class Google {
 		});
 	}
 
-	#clearCalendarGET({ router }) {
+	#clearCalendar_GET({ router }) {
 		router.get("/clearCalendar", async (ctx) => {
-			const queryParams = ctx.request.url.searchParams;
-			const id = queryParams.get("id");
-			await this.#getEvent({ ctx, id });
+			const events = await this.#findEvents({});
+			events.items.forEach(async (event) => {
+				await this.#deleteEvent({ id: event.id });
+			});
+			ctx.response.body = "Calendar Cleared";
 		});
 	}
 
+	#requestPTO_POST({ router }) {
+		router.post("/requestPTO", async (ctx) => {
+			if (!this.#defaultCalendar.id) {
+				await this.#findCalendar({});
+			}
+
+			// Parse body
+			const body = await ctx.request.body.json();
+			console.log(body);
+			const isUpdating = body.ptoRequest.ptoID !== null;
+			// const { ptoID, ptoDays, ptoEntitled, ptoStartDate, ptoStartTime, ptoEndTime } = body;
+			// console.log({ ptoDays, ptoEntitled, ptoID, ptoStartDate, ptoStartTime, ptoEndTime, isUpdating });
+
+			if (isUpdating) {
+				// 	const event = await this.#getEvent({ id: ptoID });
+				// 	let start = new Date(event.start.dateTime);
+				// 	let end = new Date(event.end.dateTime);
+				// 	const duration = end - start;
+				// 	start = new Date(ptoStartDate);
+				// 	end = new Date(start.getTime() + duration);
+				// 	this.#updateEvent({ id: ptoID, start, end });
+			} else {
+				console.log("create");
+			}
+
+			// {
+			// 	"ptoDays": 0.5,
+			// 	"ptoEntitled": 5,
+			// 	"ptoID": null,
+			// 	"ptoStartDate": "2025-02-09T00:00:00Z",
+			// 	"ptoStartTime": "11:00 AM"
+			// }
+
+			// start = new Date(start);
+			// end = new Date(end);
+			// console.log(start, end, employeeName, employeeEmail);
+			// await this.#createEvent({ ctx, start, end, employeeName, employeeEmail });
+
+			ctx.response.body = "PTO Request completed";
+		});
+	}
+	//#endregion
+
+	//#region CALENDAR BASE OPERATIONS
 	async #findCalendar({ ctx }) {
 		const calendarName = "Agentforce PTO";
 		let calendars = await this.#etFetch({
@@ -94,8 +142,8 @@ export class Google {
 		});
 		calendars = calendars.items.filter((calendar) => calendar.summary === calendarName);
 		if (calendars.length === 1) {
-			this.#calendarId = calendars[0].id;
-			console.log(`Calendar: ${this.#calendarId}`);
+			this.#defaultCalendar = calendars[0];
+			console.log(`Calendar: ${this.#defaultCalendar.id}`);
 			if (ctx) {
 				ctx.response.body = "Calendar found";
 			}
@@ -105,11 +153,11 @@ export class Google {
 	}
 
 	async #findEvents({ ctx, query }) {
-		if (!this.#calendarId) {
+		if (!this.#defaultCalendar.id) {
 			await this.#findCalendar({});
 		}
 
-		let url = `https://www.googleapis.com/calendar/v3/calendars/${this.#calendarId}/events`;
+		let url = `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events`;
 		if (query?.length > 0) {
 			url += `?q=${query}`;
 		}
@@ -149,12 +197,12 @@ export class Google {
 			throw new Error(`Finding event by ID without an ID is not allowed!`);
 		}
 
-		if (!this.#calendarId) {
+		if (!this.#defaultCalendar.id) {
 			await this.#findCalendar({});
 		}
 
 		const event = await this.#etFetch({
-			url: `https://www.googleapis.com/calendar/v3/calendars/${this.#calendarId}/events/${id}`,
+			url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}`,
 			options: {
 				method: "GET",
 			},
@@ -178,7 +226,7 @@ export class Google {
 	}
 
 	async #createEvent({ ctx, start, end, employeeName, employeeEmail }) {
-		if (!this.#calendarId) {
+		if (!this.#defaultCalendar.id) {
 			await this.#findCalendar({});
 		}
 
@@ -195,7 +243,7 @@ export class Google {
 		};
 		const sendUpdates = "none";
 		const response = await this.#etFetch({
-			url: `https://www.googleapis.com/calendar/v3/calendars/${this.#calendarId}/events?sendUpdates=${sendUpdates}`,
+			url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events?sendUpdates=${sendUpdates}`,
 			options: {
 				method: "POST",
 				headers: {
@@ -216,7 +264,7 @@ export class Google {
 			throw new Error(`Updating event by ID without an ID is not allowed!`);
 		}
 
-		if (!this.#calendarId) {
+		if (!this.#defaultCalendar.id) {
 			await this.#findCalendar({});
 		}
 		const event = await this.#getEvent({ id });
@@ -225,7 +273,7 @@ export class Google {
 			event.end.dateTime = new Date(end).toJSON();
 			const sendUpdates = "none";
 			const response = await this.#etFetch({
-				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#calendarId}/events/${id}?sendUpdates=${sendUpdates}`,
+				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}?sendUpdates=${sendUpdates}`,
 				options: {
 					method: "PUT",
 					headers: {
@@ -249,14 +297,14 @@ export class Google {
 			throw new Error(`Deleting event by ID without an ID is not allowed!`);
 		}
 
-		if (!this.#calendarId) {
+		if (!this.#defaultCalendar.id) {
 			await this.#findCalendar({});
 		}
 
 		const event = await this.#getEvent({ id });
 		if (event) {
 			await this.#etFetch({
-				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#calendarId}/events/${id}`,
+				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}`,
 				options: {
 					method: "DELETE",
 				},
@@ -292,7 +340,7 @@ export class Google {
 		return scopesRequired;
 	}
 
-	#loginGET({ router }) {
+	#login_GET({ router }) {
 		router.get("/login", async (ctx) => {
 			const loginWithoutRefreshToken = () => {
 				const scopes = this.#scopesRequired;
@@ -327,7 +375,7 @@ export class Google {
 		});
 	}
 
-	#callbackGET({ router }) {
+	#callback_GET({ router }) {
 		const saveLoginResults = async () => {
 			if (this.#isDebug) {
 				await Deno.mkdir("secrets", { recursive: true });
@@ -403,7 +451,7 @@ export class Google {
 		});
 	}
 
-	#addScopesGET({ router }) {
+	#addScopes_GET({ router }) {
 		router.get("/addScope", (ctx) => {
 			const queryParamsRequest = ctx.request.url.searchParams;
 
@@ -534,4 +582,59 @@ export class Google {
 			throw new Error(`Unexpected HTTP Status. expectedStatus [${expectedStatus}], received [${response.status}]`);
 		}
 	}
+
+	getDateTime({ date, time, timeZone }) {
+		// Handle different time formats
+		const parseTime = (timeStr) => {
+			// If it's in AM/PM format
+			if (timeStr.includes("AM") || timeStr.includes("PM")) {
+				const [hour, period] = timeStr.split(" ");
+				const hour24 = period === "AM" ? (hour === "12" ? "00" : hour.padStart(2, "0")) : hour === "12" ? "12" : String(Number(hour) + 12);
+				return `${hour24}:00:00`;
+			}
+
+			// If it's in 24-hour format (might include seconds and milliseconds)
+			return timeStr.includes(":") ? timeStr : `${timeStr}:00:00`;
+		};
+
+		// If time is already in UTC
+		if (time.endsWith("Z")) {
+			if (time.includes("T")) {
+				return new Date(`${time}`);
+			} else {
+				return new Date(`${date}T${time}`);
+			}
+		}
+
+		// Create timestamp in specified timeZone
+		const timeString = parseTime(time);
+		const fullString = `${date} ${timeString}`;
+		const localDate = new Date(fullString);
+		const targetDate = new Date(localDate.toLocaleString("en-US", { timeZone }));
+
+		// Calculate and apply the offset
+		const offset = targetDate.getTime() - localDate.getTime();
+		return new Date(localDate.getTime() - offset);
+	}
 }
+
+// let mtz = new MyTimezones();
+// const timeZones = ["America/Toronto", "America/Los_Angeles"];
+// const times = ["9 AM", "9:15 AM", "09:30:00", "14:00:00.000Z"];
+// timeZones.forEach((timeZone) => {
+// 	times.forEach((time) => {
+// 		const date = "2025-02-10";
+// 		const timestamp = mtz.getDateTime({ date, time, timeZone });
+// 		console.log(`ISO: ${timestamp.toISOString()} | ${timestamp} | timeZone: ${timeZone} | Date: ${date} | Time: ${time}`);
+// 	});
+// });
+
+// // More tests
+// const values = [
+// 	{ date: "2025-02-10", time: "14:00:00.000Z", timeZone: "America/Toronto" },
+// 	{ date: "2025-02-14", time: "2025-02-10T14:00:00.000Z", timeZone: "America/Toronto" },
+// ];
+// values.forEach((value) => {
+// 	const timestamp = mtz.getDateTime(value);
+// 	console.log(`ISO: ${timestamp.toISOString()} | ${timestamp} | timeZone: ${value.timeZone} | Date: ${value.date} | Time: ${value.time}`);
+// });
