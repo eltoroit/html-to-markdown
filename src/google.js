@@ -1,15 +1,15 @@
 // import { Application, Router } from "jsr:@oak/oak";
 
 export class Google {
-	serverRoot;
-	calendarId;
-	loginResult;
-	isDebug = true;
-	itemFields = ["id", "summary", "description", "start", "end", "attendees"];
+	#serverRoot;
+	#calendarId;
+	#loginResult;
+	#isDebug = true;
+	#itemFields = ["id", "summary", "description", "start", "end", "attendees"];
 
 	constructor({ moreRoutes, isDebug }) {
-		this.isDebug = isDebug;
-		this.serverRoot = Deno.env.get("SERVER_ROOT");
+		this.#isDebug = isDebug;
+		this.#serverRoot = Deno.env.get("SERVER_ROOT");
 
 		// Login
 		moreRoutes.push(this.#loginGET.bind(this));
@@ -76,6 +76,14 @@ export class Google {
 		});
 	}
 
+	#clearCalendarGET({ router }) {
+		router.get("/clearCalendar", async (ctx) => {
+			const queryParams = ctx.request.url.searchParams;
+			const id = queryParams.get("id");
+			await this.#getEvent({ ctx, id });
+		});
+	}
+
 	async #findCalendar({ ctx }) {
 		const calendarName = "Agentforce PTO";
 		let calendars = await this.#etFetch({
@@ -86,8 +94,8 @@ export class Google {
 		});
 		calendars = calendars.items.filter((calendar) => calendar.summary === calendarName);
 		if (calendars.length === 1) {
-			this.calendarId = calendars[0].id;
-			console.log(`Calendar: ${this.calendarId}`);
+			this.#calendarId = calendars[0].id;
+			console.log(`Calendar: ${this.#calendarId}`);
 			if (ctx) {
 				ctx.response.body = "Calendar found";
 			}
@@ -97,11 +105,11 @@ export class Google {
 	}
 
 	async #findEvents({ ctx, query }) {
-		if (!this.calendarId) {
+		if (!this.#calendarId) {
 			await this.#findCalendar({});
 		}
 
-		let url = `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events`;
+		let url = `https://www.googleapis.com/calendar/v3/calendars/${this.#calendarId}/events`;
 		if (query?.length > 0) {
 			url += `?q=${query}`;
 		}
@@ -115,7 +123,7 @@ export class Google {
 		// Parse list
 		const items = events.items.map((event) => {
 			const item = {};
-			this.itemFields.forEach((field) => {
+			this.#itemFields.forEach((field) => {
 				item[field] = event[field];
 			});
 			return item;
@@ -131,7 +139,7 @@ export class Google {
 			ctx.response.status = "200";
 			ctx.response.body = output;
 		} else {
-			if (this.isDebug) console.log(output);
+			if (this.#isDebug) console.log(output);
 			return output;
 		}
 	}
@@ -141,12 +149,12 @@ export class Google {
 			throw new Error(`Finding event by ID without an ID is not allowed!`);
 		}
 
-		if (!this.calendarId) {
+		if (!this.#calendarId) {
 			await this.#findCalendar({});
 		}
 
 		const event = await this.#etFetch({
-			url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events/${id}`,
+			url: `https://www.googleapis.com/calendar/v3/calendars/${this.#calendarId}/events/${id}`,
 			options: {
 				method: "GET",
 			},
@@ -154,7 +162,7 @@ export class Google {
 
 		// Parse list
 		const output = {};
-		this.itemFields.forEach((field) => {
+		this.#itemFields.forEach((field) => {
 			output[field] = event[field];
 		});
 
@@ -164,13 +172,13 @@ export class Google {
 			ctx.response.status = "200";
 			ctx.response.body = output;
 		} else {
-			if (this.isDebug) console.log(output);
+			if (this.#isDebug) console.log(output);
 			return output;
 		}
 	}
 
 	async #createEvent({ ctx, start, end, employeeName, employeeEmail }) {
-		if (!this.calendarId) {
+		if (!this.#calendarId) {
 			await this.#findCalendar({});
 		}
 
@@ -187,7 +195,7 @@ export class Google {
 		};
 		const sendUpdates = "none";
 		const response = await this.#etFetch({
-			url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events?sendUpdates=${sendUpdates}`,
+			url: `https://www.googleapis.com/calendar/v3/calendars/${this.#calendarId}/events?sendUpdates=${sendUpdates}`,
 			options: {
 				method: "POST",
 				headers: {
@@ -196,7 +204,7 @@ export class Google {
 				body: JSON.stringify(event),
 			},
 		});
-		if (this.isDebug) console.log(response);
+		if (this.#isDebug) console.log(response);
 		console.log("Event created");
 		if (ctx) {
 			ctx.response.body = "Event created";
@@ -208,7 +216,7 @@ export class Google {
 			throw new Error(`Updating event by ID without an ID is not allowed!`);
 		}
 
-		if (!this.calendarId) {
+		if (!this.#calendarId) {
 			await this.#findCalendar({});
 		}
 		const event = await this.#getEvent({ id });
@@ -217,7 +225,7 @@ export class Google {
 			event.end.dateTime = new Date(end).toJSON();
 			const sendUpdates = "none";
 			const response = await this.#etFetch({
-				url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events/${id}?sendUpdates=${sendUpdates}`,
+				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#calendarId}/events/${id}?sendUpdates=${sendUpdates}`,
 				options: {
 					method: "PUT",
 					headers: {
@@ -226,7 +234,7 @@ export class Google {
 					body: JSON.stringify(event),
 				},
 			});
-			if (this.isDebug) console.log(response);
+			if (this.#isDebug) console.log(response);
 			console.log("Event updated");
 			if (ctx) {
 				ctx.response.body = "Event updated";
@@ -241,14 +249,14 @@ export class Google {
 			throw new Error(`Deleting event by ID without an ID is not allowed!`);
 		}
 
-		if (!this.calendarId) {
+		if (!this.#calendarId) {
 			await this.#findCalendar({});
 		}
 
 		const event = await this.#getEvent({ id });
 		if (event) {
 			await this.#etFetch({
-				url: `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events/${id}`,
+				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#calendarId}/events/${id}`,
 				options: {
 					method: "DELETE",
 				},
@@ -297,13 +305,13 @@ export class Google {
 					access_type: "offline",
 					include_granted_scopes: "true",
 					client_id: Deno.env.get("CLIENT_ID"),
-					redirect_uri: encodeURI(`${this.serverRoot}/callback`),
+					redirect_uri: encodeURI(`${this.#serverRoot}/callback`),
 				};
 				if (Deno.env.get("GMAIL")) {
 					queryParams.login_hint = Deno.env.get("GMAIL");
 				}
 				queryParams = new URLSearchParams(queryParams);
-				if (this.isDebug) console.log(`Callback Server: ${this.serverRoot}`);
+				if (this.#isDebug) console.log(`Callback Server: ${this.#serverRoot}`);
 
 				const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
 				ctx.response.redirect(url);
@@ -321,20 +329,20 @@ export class Google {
 
 	#callbackGET({ router }) {
 		const saveLoginResults = async () => {
-			if (this.isDebug) {
+			if (this.#isDebug) {
 				await Deno.mkdir("secrets", { recursive: true });
-				await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.json`, JSON.stringify(this.loginResult, null, 4));
-				if (this.loginResult.refresh_token) {
-					await Deno.writeTextFile(`secrets/google.json`, JSON.stringify(this.loginResult, null, 4));
+				await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.json`, JSON.stringify(this.#loginResult, null, 4));
+				if (this.#loginResult.refresh_token) {
+					await Deno.writeTextFile(`secrets/google.json`, JSON.stringify(this.#loginResult, null, 4));
 				}
 			}
-			if (this.loginResult?.refresh_token) {
-				console.log(`Refresh Token [${this.loginResult.refresh_token}]`);
+			if (this.#loginResult?.refresh_token) {
+				console.log(`Refresh Token [${this.#loginResult.refresh_token}]`);
 			}
 		};
 		router.get("/callback", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
-			if (this.isDebug) {
+			if (this.#isDebug) {
 				for (const [key, value] of queryParams) {
 					console.log(`${key}: ${value}`);
 				}
@@ -349,17 +357,17 @@ export class Google {
 					grant_type: "authorization_code",
 					client_id: Deno.env.get("CLIENT_ID"),
 					client_secret: Deno.env.get("CLIENT_SECRET"),
-					redirect_uri: `${this.serverRoot}/callback`,
+					redirect_uri: `${this.#serverRoot}/callback`,
 				}),
 			});
-			if (this.isDebug) console.log(`Callback Server: ${this.serverRoot}`);
-			this.loginResult = await response.json();
+			if (this.#isDebug) console.log(`Callback Server: ${this.#serverRoot}`);
+			this.#loginResult = await response.json();
 			console.log("Login Callback");
-			if (this.isDebug) console.log(this.loginResult);
+			if (this.#isDebug) console.log(this.#loginResult);
 			await saveLoginResults();
 
 			// Check scopes
-			const scopesGranted = this.loginResult.scope.split(" ");
+			const scopesGranted = this.#loginResult.scope.split(" ");
 			const scopesRequired = JSON.parse(decodeURI(queryParams.get("state")));
 			const scopesRemaining = scopesRequired.filter((scope) => !scopesGranted.includes(scope));
 			if (scopesRemaining.length > 0) {
@@ -379,8 +387,8 @@ export class Google {
 </html>`;
 			} else {
 				let msg = "";
-				if (this.loginResult?.refresh_token) {
-					msg = `Save the new Refresh Token <span style="color:red">${this.loginResult.refresh_token}</span>`;
+				if (this.#loginResult?.refresh_token) {
+					msg = `Save the new Refresh Token <span style="color:red">${this.#loginResult.refresh_token}</span>`;
 				}
 				ctx.response.body = `
 <!DOCTYPE html>
@@ -411,13 +419,13 @@ export class Google {
 					access_type: "offline",
 					include_granted_scopes: "true",
 					client_id: Deno.env.get("CLIENT_ID"),
-					redirect_uri: encodeURI(`${this.serverRoot}/callback`),
+					redirect_uri: encodeURI(`${this.#serverRoot}/callback`),
 				};
 				if (Deno.env.get("GMAIL")) {
 					queryParams.login_hint = Deno.env.get("GMAIL");
 				}
 				queryParams = new URLSearchParams(queryParams);
-				if (this.isDebug) console.log(`Callback Server: ${this.serverRoot}`);
+				if (this.#isDebug) console.log(`Callback Server: ${this.#serverRoot}`);
 				const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
 				ctx.response.redirect(url);
 			} catch (ex) {
@@ -457,9 +465,9 @@ export class Google {
 					refresh_token,
 				}),
 			});
-			this.loginResult = await response.json();
-			if (this.isDebug) console.log(this.loginResult);
-			if (this.loginResult.access_token) {
+			this.#loginResult = await response.json();
+			if (this.#isDebug) console.log(this.#loginResult);
+			if (this.#loginResult.access_token) {
 				console.log("Logged in with Refresh Token");
 				if (ctx) {
 					ctx.response.body = "Logged in with refresh token completed";
@@ -487,7 +495,7 @@ export class Google {
 			if (!options.headers) {
 				options.headers = {};
 			}
-			options.headers.Authorization = `Bearer ${this.loginResult?.access_token}`;
+			options.headers.Authorization = `Bearer ${this.#loginResult?.access_token}`;
 		};
 
 		const makeRequest = async () => {
@@ -510,7 +518,7 @@ export class Google {
 		if (response.status === expectedStatus) {
 			if (response.body) {
 				response = await response.json();
-				if (this.isDebug) console.log(response);
+				if (this.#isDebug) console.log(response);
 				return response;
 			} else {
 				// No body

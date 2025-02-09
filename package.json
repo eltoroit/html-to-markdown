@@ -3,7 +3,7 @@
 		"watch": "deno run --watch --allow-all --env-file ./main.js",
 		"debug": "deno run --inspect-brk --allow-all --env-file ./main.js",
 		"serve": "deno run --allow-env --allow-net --allow-read --allow-write --env-file ./main.js",
-		"heroku": "deno run --allow-all ./main.js",
+		"heroku": "deno run --allow-env --allow-net --allow-read --allow-write ./main.js",
 		"simulateHeroku": "./simulateHeroku.sh"
 	},
 	"dependencies": {
