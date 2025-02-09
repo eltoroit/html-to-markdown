@@ -1,10 +1,7 @@
 {
-  "imports": {
-    "@oak/oak": "jsr:@oak/oak@^17.1.4",
-    "turndown": "npm:turndown@^7.2.0"
-  },
-  "tasks": {
-    "start": "deno run --allow-net --allow-env main.ts",
-    "dev": "deno run --watch --allow-net --allow-env main.ts"
-  }
+	"imports": {
+		"@oak/oak": "jsr:@oak/oak@^17.1.4",
+		"turndown": "npm:turndown@^7.2.0"
+	},
+	"nodeModulesDir": "auto"
 }
