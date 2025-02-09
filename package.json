@@ -5,5 +5,8 @@
 		"serve": "deno run --allow-env --allow-net --allow-read --allow-write --env-file ./main.js",
 		"heroku": "deno run --allow-all ./main.js",
 		"simulateHeroku": "./simulateHeroku.sh"
+	},
+	"dependencies": {
+		"path-to-regexp": "^6.3.0"
 	}
 }

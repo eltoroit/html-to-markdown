@@ -1,5 +1,6 @@
 .env
 .DS_Store
 deno.lock
+package-lock.json
 secrets/
 node_modules/
