@@ -3,5 +3,8 @@
 		"watch": "deno run --watch --allow-all --env-file ./main.js",
 		"debug": "deno run --inspect-brk --allow-all --env-file ./main.js",
 		"serve": "deno run --allow-env --allow-net --allow-read --allow-write --env-file ./main.js"
+	},
+	"dependencies": {
+		"path-to-regexp": "^6.3.0"
 	}
 }
