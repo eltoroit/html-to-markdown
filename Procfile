@@ -1,1 +1,1 @@
-web: deno task serve
+web: deno task heroku

@@ -290,16 +290,19 @@ export class Google {
 				const scopes = this.#scopesRequired;
 				const scope = encodeURI(scopes.shift());
 				const state = encodeURI(JSON.stringify(scopes));
-				const queryParams = new URLSearchParams({
+				let queryParams = {
 					scope,
 					state,
 					response_type: "code",
 					access_type: "offline",
 					include_granted_scopes: "true",
-					login_hint: Deno.env.get("GMAIL"),
 					client_id: Deno.env.get("CLIENT_ID"),
 					redirect_uri: encodeURI(`${this.serverRoot}/callback`),
-				});
+				};
+				if (Deno.env.get("GMAIL")) {
+					queryParams.login_hint = Deno.env.get("GMAIL");
+				}
+				queryParams = new URLSearchParams(queryParams);
 				if (this.isDebug) console.log(`Callback Server: ${this.serverRoot}`);
 
 				const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
@@ -375,7 +378,19 @@ export class Google {
 	</body>
 </html>`;
 			} else {
-				ctx.response.body = "Login succesful";
+				let msg = "";
+				if (this.loginResult?.refresh_token) {
+					msg = `Save the new Refresh Token <span style="color:red">${this.loginResult.refresh_token}</span>`;
+				}
+				ctx.response.body = `
+<!DOCTYPE html>
+<html>
+	<head><title>Agentforce PTO</title><head>
+	<body>
+	<h1>Login succesful</h1>
+	${msg}
+	</body>
+</html>`;
 			}
 		});
 	}
@@ -388,17 +403,20 @@ export class Google {
 				let state = JSON.parse(queryParamsRequest.get("state"));
 				const scope = state.shift();
 				state = encodeURI(JSON.stringify(state));
-				const queryParams = new URLSearchParams({
+				let queryParams = {
 					scope,
 					state,
 					prompt: "consent",
 					response_type: "code",
 					access_type: "offline",
 					include_granted_scopes: "true",
-					login_hint: Deno.env.get("GMAIL"),
 					client_id: Deno.env.get("CLIENT_ID"),
 					redirect_uri: encodeURI(`${this.serverRoot}/callback`),
-				});
+				};
+				if (Deno.env.get("GMAIL")) {
+					queryParams.login_hint = Deno.env.get("GMAIL");
+				}
+				queryParams = new URLSearchParams(queryParams);
 				if (this.isDebug) console.log(`Callback Server: ${this.serverRoot}`);
 				const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
 				ctx.response.redirect(url);
@@ -449,11 +467,12 @@ export class Google {
 					return;
 				}
 			} else {
-				throw new Error("Access Token NOT found");
+				throw new Error("Unable to get Access Token using Refresh Token");
 			}
 		};
 
 		const refresh_token = await getRefreshToken();
+		console.log(`Refresh token: [${refresh_token}]`);
 		if (refresh_token) {
 			await login(refresh_token);
 		} else {
