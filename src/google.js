@@ -1,6 +1,7 @@
-// import { Application, Router } from "jsr:@oak/oak";
+import { Utils } from "./utils.js";
 
 export class Google {
+	#utils;
 	#serverRoot;
 	#loginResult;
 	#isDebug = true;
@@ -14,6 +15,7 @@ export class Google {
 
 	constructor({ moreRoutes, isDebug }) {
 		this.#isDebug = isDebug;
+		this.#utils = new Utils({ isDebug });
 		this.#serverRoot = Deno.env.get("SERVER_ROOT");
 
 		// Login
@@ -99,8 +101,8 @@ export class Google {
 				const timeZone = body.employee.TimeZoneSidKey;
 				return await this.#findEvents({
 					query: body.employee.Email,
-					timeMin: this.#getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone }),
-					timeMax: this.#getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone }),
+					timeMin: this.#utils.getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone }),
+					timeMax: this.#utils.getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone }),
 				});
 			};
 			const calculateHoursTaken = () => {
@@ -168,8 +170,8 @@ export class Google {
 					if (daysRequested >= 1) {
 						// Calculate all the dates and times
 						let dates = [];
-						let baseStart = this.#getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
-						let baseEnd = this.#getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
+						let baseStart = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
+						let baseEnd = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
 						for (let i = 0; i < daysRequested; i++) {
 							const dttmStart = new Date(baseStart);
 							const dttmEnd = new Date(baseEnd);
@@ -188,8 +190,8 @@ export class Google {
 						});
 					} else {
 						// Hours
-						const start = this.#getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoStartTime, timeZone: body.employee.TimeZoneSidKey });
-						const end = this.#getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoEndTime, timeZone: body.employee.TimeZoneSidKey });
+						const start = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoStartTime, timeZone: body.employee.TimeZoneSidKey });
+						const end = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoEndTime, timeZone: body.employee.TimeZoneSidKey });
 						const hoursRequested = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
 						if (hoursRequested > this.#businessHours.day) throw new Error("Requesting more than 8 hours is not allowed, you should request a full day");
 						validateTimePTO({ hoursRequested });
@@ -201,7 +203,7 @@ export class Google {
 
 				ctx.response.body = `PTO Request completed: ${new Date().toJSON()}`;
 			} catch (ex) {
-				this.#reportError({ ctx, exception: ex });
+				this.#utils.reportError({ ctx, exception: ex });
 			}
 		});
 	}
@@ -658,65 +660,4 @@ export class Google {
 			throw new Error(`Unexpected HTTP Status. expectedStatus [${expectedStatus}], received [${response.status}]`);
 		}
 	}
-
-	#getDateTime({ date, time, timeZone }) {
-		// Handle different time formats
-		const parseTime = (timeStr) => {
-			// If it's in AM/PM format
-			if (timeStr.includes("AM") || timeStr.includes("PM")) {
-				let [hour, period] = timeStr.split(" ");
-				const hour24 = period === "AM" ? (hour === "12" ? "00" : hour.padStart(2, "0")) : hour === "12" ? "12" : String(Number(hour) + 12);
-				return `${hour24}:00:00`;
-			}
-
-			// If it's in 24-hour format (might include seconds and milliseconds)
-			return timeStr.includes(":") ? timeStr : `${timeStr}:00:00`;
-		};
-
-		// If time is already in UTC
-		if (time.endsWith("Z")) {
-			if (time.includes("T")) {
-				return new Date(`${time}`);
-			} else {
-				return new Date(`${date}T${time}`);
-			}
-		}
-
-		// Create timestamp in specified timeZone
-		const timeString = parseTime(time);
-		const fullString = `${date} ${timeString}`;
-		const localDate = new Date(fullString);
-		const targetDate = new Date(localDate.toLocaleString("en-US", { timeZone }));
-
-		// Calculate and apply the offset
-		const offset = targetDate.getTime() - localDate.getTime();
-		return new Date(localDate.getTime() - offset);
-	}
-
-	#reportError({ ctx, error, exception }) {
-		ctx.response.status = 503;
-		if (error) ctx.response.body = error;
-		if (exception) ctx.response.body = exception.stack;
-	}
 }
-
-// let mtz = new MyTimezones();
-// const timeZones = ["America/Toronto", "America/Los_Angeles"];
-// const times = ["9 AM", "9:15 AM", "09:30:00", "14:00:00.000Z"];
-// timeZones.forEach((timeZone) => {
-// 	times.forEach((time) => {
-// 		const date = "2025-02-10";
-// 		const timestamp = mtz.getDateTime({ date, time, timeZone });
-// 		console.log(`ISO: ${timestamp.toISOString()} | ${timestamp} | timeZone: ${timeZone} | Date: ${date} | Time: ${time}`);
-// 	});
-// });
-
-// // More tests
-// const values = [
-// 	{ date: "2025-02-10", time: "14:00:00.000Z", timeZone: "America/Toronto" },
-// 	{ date: "2025-02-14", time: "2025-02-10T14:00:00.000Z", timeZone: "America/Toronto" },
-// ];
-// values.forEach((value) => {
-// 	const timestamp = mtz.getDateTime(value);
-// 	console.log(`ISO: ${timestamp.toISOString()} | ${timestamp} | timeZone: ${value.timeZone} | Date: ${value.date} | Time: ${value.time}`);
-// });

@@ -46,7 +46,7 @@ export class Webserver {
 
 	#serveHTTP({ app, port }) {
 		app.listen({ port });
-		console.log(`Server running on HEROKU ${port}: http://localhost:${port}`);
+		console.log(`Server running on HTTP ${port}: http://localhost:${port}`);
 	}
 
 	async #serveHTTPS({ app, port }) {
@@ -65,7 +65,7 @@ export class Webserver {
 			cert: certs.public,
 			key: certs.private,
 		});
-		console.log(`Server running on LOCALHOST port ${port}: https://localhost:${port}`);
+		console.log(`Server running on HTTPS port ${port}: https://localhost:${port}`);
 	}
 }
 

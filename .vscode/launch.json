@@ -5,14 +5,40 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Attach",
+			"type": "node",
+			"request": "attach",
+			"skipFiles": ["<node_internals>/**"],
+			"internalConsoleOptions": "neverOpen",
+			"port": 9229
+		},
+		{
+			"name": "ET: Debug Agentforce PTO",
 			"type": "node",
 			"request": "launch",
-			"name": "Run Deno with npm",
 			"cwd": "${workspaceFolder}",
 			"runtimeExecutable": "npm",
-			"runtimeArgs": ["run", "debug"],
+			"runtimeArgs": ["run", "serve"],
+			"env": {
+				"DEBUG_DENO": "--inspect-brk"
+			},
 			"console": "integratedTerminal",
-			"internalConsoleOptions": "neverOpen"
+			"internalConsoleOptions": "neverOpen",
+			"attachSimplePort": 9229
+		},
+		{
+			"name": "ET: Tests",
+			"type": "node",
+			"request": "launch",
+			"runtimeExecutable": "deno",
+			"runtimeArgs": ["run", "--allow-all", "--env-file", "--inspect-brk"],
+			// "program": "${workspaceFolder}/src/tests/getDatetime_test.js",
+			"program": "${workspaceFolder}/src/tests/overlap_test.js",
+			"cwd": "${workspaceFolder}",
+			"outputCapture": "std",
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"attachSimplePort": 9229
 		}
 	]
 }
