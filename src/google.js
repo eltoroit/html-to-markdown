@@ -123,10 +123,10 @@ export class Google {
 					throw new Error(`Days requested ${daysRequested} must be a fraction when requesting less than one day`);
 				}
 			};
-			const validateEntitlementPTO = ({ event, hoursRequested }) => {
+			const validateEntitlementPTO = ({ oldEvent, hoursRequested }) => {
 				let durationOldEvent = 0;
-				if (event) {
-					durationOldEvent = (new Date(event.end.dateTime) - new Date(event.start.dateTime)) / (1000 * 60 * 60);
+				if (oldEvent) {
+					durationOldEvent = (new Date(oldEvent.end.dateTime) - new Date(oldEvent.start.dateTime)) / (1000 * 60 * 60);
 				}
 				const totalHours = hoursTaken - durationOldEvent + hoursRequested;
 				const hoursEntitled = body.ptoRequest.ptoEntitled * this.#businessHours.day;
@@ -167,13 +167,24 @@ export class Google {
 
 				const output = [];
 				if (isUpdating) {
-					// const oldEvent = await this.#getEvent({ id: body.ptoRequest.ptoID });
-					// 	let start = new Date(event.start.dateTime);
-					// 	let end = new Date(event.end.dateTime);
-					// 	const duration = end - start;
-					// 	start = new Date(ptoStartDate);
-					// 	end = new Date(start.getTime() + duration);
-					// 	output.push(await this.#updateEvent({ id: ptoID, start, end }));
+					let start;
+					let end;
+					const oldEvent = await this.#getEvent({ id: body.ptoRequest.ptoID });
+					if (body.ptoRequest.ptoStartDate && body.ptoRequest.ptoEndTime) {
+						start = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoStartTime, timeZone: body.employee.TimeZoneSidKey });
+						end = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoEndTime, timeZone: body.employee.TimeZoneSidKey });
+					} else {
+						start = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
+						end = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
+					}
+					const hoursRequested = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
+					if (hoursRequested > this.#businessHours.day) throw new Error("Requesting more than 8 hours is not allowed, you should request a full day");
+					validateEntitlementPTO({ oldEvent, hoursRequested });
+					// Remove old event because maybe the overlap is with the old event.
+					employeeEvents.items = employeeEvents.items.filter((event) => event.id !== body.ptoRequest.ptoID);
+					validateOverlap({ start, end });
+					const newEvent = await this.#updateEvent({ id: body.ptoRequest.ptoID, start, end });
+					output.push(newEvent);
 				} else {
 					console.log("create");
 					if (daysRequested >= 1) {
