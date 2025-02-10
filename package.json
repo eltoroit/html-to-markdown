@@ -1,9 +1,9 @@
 {
 	"scripts": {
 		"watch": "deno run --watch --allow-all --env-file ./main.js",
-		"heroku": "deno run --allow-env --allow-net --allow-read --allow-write ./main.js",
 		"serve": "deno run $DEBUG_DENO --allow-env --allow-net --allow-read --allow-write --env-file ./main.js",
-		"debugHeroku": "./simulateHeroku.sh",
+		"heroku": "deno run --allow-env --allow-net --allow-read --allow-write ./main.js",
+		"debug:heroku": "./simulateHeroku.sh",
 		"unitTesting": "deno test src/tests/overlap_test.js",
 		"debug:unitTesting": "deno test --inspect-brk src/tests/overlap_test.js"
 	},

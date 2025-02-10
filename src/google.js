@@ -123,7 +123,7 @@ export class Google {
 					throw new Error(`Days requested ${daysRequested} must be a fraction when requesting less than one day`);
 				}
 			};
-			const validateTimePTO = ({ event, hoursRequested }) => {
+			const validateEntitlementPTO = ({ event, hoursRequested }) => {
 				let durationOldEvent = 0;
 				if (event) {
 					durationOldEvent = (new Date(event.end.dateTime) - new Date(event.start.dateTime)) / (1000 * 60 * 60);
@@ -136,6 +136,14 @@ export class Google {
 					msg += "This request exceeds the amount of hours you are entitled to request per year. ";
 					msg += `You have taken ${(hoursTaken / this.#businessHours.day).toFixed(1)} days`;
 					throw new Error(msg);
+				}
+			};
+			const validateOverlap = ({ start, end }) => {
+				const newEvent = { start, end };
+				const oldEvents = employeeEvents.items.map((event) => ({ start: new Date(event.start.dateTime), end: new Date(event.end.dateTime) }));
+				const overlaps = this.#utils.hasOverlap({ events: oldEvents, newEvent });
+				if (overlaps) {
+					throw new Error(`Event requested ${JSON.stringify(newEvent)} overlaps existing request. You had already requeed that time off`);
 				}
 			};
 
@@ -157,51 +165,62 @@ export class Google {
 				hoursTaken = calculateHoursTaken();
 				isUpdating = body.ptoRequest.ptoID !== null;
 
+				const output = [];
 				if (isUpdating) {
-					// const event = await this.#getEvent({ id: body.ptoRequest.ptoID });
+					// const oldEvent = await this.#getEvent({ id: body.ptoRequest.ptoID });
 					// 	let start = new Date(event.start.dateTime);
 					// 	let end = new Date(event.end.dateTime);
 					// 	const duration = end - start;
 					// 	start = new Date(ptoStartDate);
 					// 	end = new Date(start.getTime() + duration);
-					// 	this.#updateEvent({ id: ptoID, start, end });
+					// 	output.push(await this.#updateEvent({ id: ptoID, start, end }));
 				} else {
 					console.log("create");
 					if (daysRequested >= 1) {
 						// Calculate all the dates and times
-						let dates = [];
-						let baseStart = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
-						let baseEnd = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
+						const dates = [];
+						const baseStart = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
+						const baseEnd = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
 						for (let i = 0; i < daysRequested; i++) {
 							const dttmStart = new Date(baseStart);
 							const dttmEnd = new Date(baseEnd);
 							dttmStart.setDate(dttmStart.getDate() + i);
 							dttmEnd.setDate(dttmEnd.getDate() + i);
 							dates.push({ start: dttmStart, end: dttmEnd });
+							validateOverlap({ start: dttmStart, end: dttmEnd });
 						}
 
 						// Days
 						const hoursRequested = ((new Date(baseEnd) - new Date(baseStart)) / (1000 * 60 * 60)) * daysRequested;
-						validateTimePTO({ hoursRequested });
+						validateEntitlementPTO({ hoursRequested });
 						const employeeName = body.employee.Name;
 						const employeeEmail = body.employee.Email;
-						dates.forEach(async (date) => {
-							await this.#createEvent({ start: date.start, end: date.end, employeeName, employeeEmail });
+						const newEventsPromise = dates.map((date) => {
+							const p = this.#createEvent({ start: date.start, end: date.end, employeeName, employeeEmail });
+							p.then((newEvent) => {
+								output.push(newEvent);
+							});
+							return p;
 						});
+						await Promise.allSettled(newEventsPromise);
 					} else {
 						// Hours
 						const start = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoStartTime, timeZone: body.employee.TimeZoneSidKey });
 						const end = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoEndTime, timeZone: body.employee.TimeZoneSidKey });
 						const hoursRequested = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
 						if (hoursRequested > this.#businessHours.day) throw new Error("Requesting more than 8 hours is not allowed, you should request a full day");
-						validateTimePTO({ hoursRequested });
+						validateEntitlementPTO({ hoursRequested });
+						validateOverlap({ start, end });
 						const employeeName = body.employee.Name;
 						const employeeEmail = body.employee.Email;
-						await this.#createEvent({ start, end, employeeName, employeeEmail });
+						const newEvent = await this.#createEvent({ start, end, employeeName, employeeEmail });
+						output.push(newEvent);
 					}
 				}
 
-				ctx.response.body = `PTO Request completed: ${new Date().toJSON()}`;
+				ctx.response.type = "json";
+				ctx.response.status = "200";
+				ctx.response.body = output;
 			} catch (ex) {
 				this.#utils.reportError({ ctx, exception: ex });
 			}
@@ -333,9 +352,13 @@ export class Google {
 			},
 		});
 		if (this.#isDebug) console.log(response);
-		console.log("Event created");
+		const output = this.#getEventDate({ response });
 		if (ctx) {
-			ctx.response.body = `Event created: ${new Date().toJSON()}`;
+			ctx.response.type = "json";
+			ctx.response.status = "200";
+			ctx.response.body = output;
+		} else {
+			return output;
 		}
 	}
 
@@ -363,9 +386,13 @@ export class Google {
 				},
 			});
 			if (this.#isDebug) console.log(response);
-			console.log("Event updated");
+			const output = this.#getEventDate({ response });
 			if (ctx) {
-				ctx.response.body = `Event updated: ${new Date().toJSON()}`;
+				ctx.response.type = "json";
+				ctx.response.status = "200";
+				ctx.response.body = output;
+			} else {
+				return output;
 			}
 		} else {
 			throw new Error(`Event with ID [${id}] was NOT found to be updated`);
@@ -561,7 +588,7 @@ export class Google {
 	}
 
 	async #loginWithRefreshToken({ ctx }) {
-		const getRefreshToken = async () => {
+		const getRefreshToken = () => {
 			try {
 				// const path = "secrets/google.json";
 				// await Deno.lstat(path);
@@ -659,5 +686,24 @@ export class Google {
 			console.error(await response.text()); // Body
 			throw new Error(`Unexpected HTTP Status. expectedStatus [${expectedStatus}], received [${response.status}]`);
 		}
+	}
+
+	#getEventDate({ response }) {
+		const output = {};
+		["id", "summary", "description", ["start", "dateTime"], ["end", "dateTime"], ["creator", "email"], "attendees", "status"].forEach((item) => {
+			if (Array.isArray(item)) {
+				const keyName = item.shift();
+				const response2 = response[keyName];
+				const key2 = item.shift();
+				const value = response2[key2];
+				output[keyName] = value;
+			} else {
+				output[item] = response[item];
+			}
+		});
+		output.start = new Date(output.start);
+		output.end = new Date(output.end);
+		output.attendees = output.attendees.map((attendeee) => attendeee.email);
+		return output;
 	}
 }
