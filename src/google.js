@@ -4,6 +4,11 @@ export class Google {
 	#serverRoot;
 	#loginResult;
 	#isDebug = true;
+	#businessHours = {
+		day: 8, // 8 hours in a business day (Not 24!)
+		start: "09:00",
+		end: "17:00",
+	};
 	#defaultCalendar = {};
 	#itemFields = ["id", "summary", "description", "start", "end", "attendees"];
 
@@ -90,43 +95,114 @@ export class Google {
 
 	#requestPTO_POST({ router }) {
 		router.post("/requestPTO", async (ctx) => {
-			if (!this.#defaultCalendar.id) {
-				await this.#findCalendar({});
-			}
+			const findEmployeeEvents = async ({ year }) => {
+				const timeZone = body.employee.TimeZoneSidKey;
+				return await this.#findEvents({
+					query: body.employee.Email,
+					timeMin: this.#getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone }),
+					timeMax: this.#getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone }),
+				});
+			};
+			const calculateHoursTaken = () => {
+				return employeeEvents.items.reduce((accumulator, event) => {
+					const eventDurationHR = (new Date(event.end.dateTime) - new Date(event.start.dateTime)) / (1000 * 60 * 60);
+					return accumulator + eventDurationHR;
+				}, 0);
+			};
+			const validateHours = () => {
+				const daysRequested = body.ptoRequest.ptoDays;
+				const fraction = daysRequested - Math.floor(daysRequested);
+				if (daysRequested >= 1) {
+					if (!fraction) return daysRequested;
+					throw new Error(`Days requested ${daysRequested} can not have fractions when requesting more than one day`);
+				} else {
+					if (fraction) return daysRequested;
+					if (daysRequested === 0) throw new Error(`Days requested ${daysRequested} must be greater than 0`);
+					throw new Error(`Days requested ${daysRequested} must be a fraction when requesting less than one day`);
+				}
+			};
+			const validateTimePTO = ({ event, hoursRequested }) => {
+				let durationOldEvent = 0;
+				if (event) {
+					durationOldEvent = (new Date(event.end.dateTime) - new Date(event.start.dateTime)) / (1000 * 60 * 60);
+				}
+				const totalHours = hoursTaken - durationOldEvent + hoursRequested;
+				const hoursEntitled = body.ptoRequest.ptoEntitled * this.#businessHours.day;
+				if (totalHours > hoursEntitled) {
+					let msg = "";
+					msg += "Request has been denied. ";
+					msg += "This request exceeds the amount of hours you are entitled to request per year. ";
+					msg += `You have taken ${(hoursTaken / this.#businessHours.day).toFixed(1)} days`;
+					throw new Error(msg);
+				}
+			};
 
 			// Parse body
-			const body = await ctx.request.body.json();
-			console.log(body);
-			const isUpdating = body.ptoRequest.ptoID !== null;
-			// const { ptoID, ptoDays, ptoEntitled, ptoStartDate, ptoStartTime, ptoEndTime } = body;
-			// console.log({ ptoDays, ptoEntitled, ptoID, ptoStartDate, ptoStartTime, ptoEndTime, isUpdating });
 
-			if (isUpdating) {
-				// 	const event = await this.#getEvent({ id: ptoID });
-				// 	let start = new Date(event.start.dateTime);
-				// 	let end = new Date(event.end.dateTime);
-				// 	const duration = end - start;
-				// 	start = new Date(ptoStartDate);
-				// 	end = new Date(start.getTime() + duration);
-				// 	this.#updateEvent({ id: ptoID, start, end });
-			} else {
-				console.log("create");
+			let body;
+			let isUpdating;
+			let hoursTaken;
+			let daysRequested;
+			let employeeEvents;
+			try {
+				if (!this.#defaultCalendar.id) {
+					await this.#findCalendar({});
+				}
+
+				body = await ctx.request.body.json();
+				daysRequested = validateHours();
+				employeeEvents = await findEmployeeEvents({ year: new Date().getFullYear() });
+				hoursTaken = calculateHoursTaken();
+				isUpdating = body.ptoRequest.ptoID !== null;
+
+				if (isUpdating) {
+					// const event = await this.#getEvent({ id: body.ptoRequest.ptoID });
+					// 	let start = new Date(event.start.dateTime);
+					// 	let end = new Date(event.end.dateTime);
+					// 	const duration = end - start;
+					// 	start = new Date(ptoStartDate);
+					// 	end = new Date(start.getTime() + duration);
+					// 	this.#updateEvent({ id: ptoID, start, end });
+				} else {
+					console.log("create");
+					if (daysRequested >= 1) {
+						// Calculate all the dates and times
+						let dates = [];
+						let baseStart = this.#getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
+						let baseEnd = this.#getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
+						for (let i = 0; i < daysRequested; i++) {
+							const dttmStart = new Date(baseStart);
+							const dttmEnd = new Date(baseEnd);
+							dttmStart.setDate(dttmStart.getDate() + i);
+							dttmEnd.setDate(dttmEnd.getDate() + i);
+							dates.push({ start: dttmStart, end: dttmEnd });
+						}
+
+						// Days
+						const hoursRequested = ((new Date(baseEnd) - new Date(baseStart)) / (1000 * 60 * 60)) * daysRequested;
+						validateTimePTO({ hoursRequested });
+						const employeeName = body.employee.Name;
+						const employeeEmail = body.employee.Email;
+						dates.forEach(async (date) => {
+							await this.#createEvent({ start: date.start, end: date.end, employeeName, employeeEmail });
+						});
+					} else {
+						// Hours
+						const start = this.#getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoStartTime, timeZone: body.employee.TimeZoneSidKey });
+						const end = this.#getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoEndTime, timeZone: body.employee.TimeZoneSidKey });
+						const hoursRequested = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
+						if (hoursRequested > this.#businessHours.day) throw new Error("Requesting more than 8 hours is not allowed, you should request a full day");
+						validateTimePTO({ hoursRequested });
+						const employeeName = body.employee.Name;
+						const employeeEmail = body.employee.Email;
+						await this.#createEvent({ start, end, employeeName, employeeEmail });
+					}
+				}
+
+				ctx.response.body = "PTO Request completed";
+			} catch (ex) {
+				this.#reportError({ ctx, exception: ex });
 			}
-
-			// {
-			// 	"ptoDays": 0.5,
-			// 	"ptoEntitled": 5,
-			// 	"ptoID": null,
-			// 	"ptoStartDate": "2025-02-09T00:00:00Z",
-			// 	"ptoStartTime": "11:00 AM"
-			// }
-
-			// start = new Date(start);
-			// end = new Date(end);
-			// console.log(start, end, employeeName, employeeEmail);
-			// await this.#createEvent({ ctx, start, end, employeeName, employeeEmail });
-
-			ctx.response.body = "PTO Request completed";
 		});
 	}
 	//#endregion
@@ -152,15 +228,17 @@ export class Google {
 		}
 	}
 
-	async #findEvents({ ctx, query }) {
+	async #findEvents({ ctx, query, timeMin, timeMax }) {
 		if (!this.#defaultCalendar.id) {
 			await this.#findCalendar({});
 		}
 
-		let url = `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events`;
-		if (query?.length > 0) {
-			url += `?q=${query}`;
-		}
+		const queryParams = {};
+		if (query?.length > 0) queryParams.q = query;
+		if (timeMin) queryParams.timeMin = new Date(timeMin).toJSON();
+		if (timeMax) queryParams.timeMax = new Date(timeMax).toJSON();
+		const url = `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events?${new URLSearchParams(queryParams).toString()}`;
+
 		const events = await this.#etFetch({
 			url,
 			options: {
@@ -583,12 +661,12 @@ export class Google {
 		}
 	}
 
-	getDateTime({ date, time, timeZone }) {
+	#getDateTime({ date, time, timeZone }) {
 		// Handle different time formats
 		const parseTime = (timeStr) => {
 			// If it's in AM/PM format
 			if (timeStr.includes("AM") || timeStr.includes("PM")) {
-				const [hour, period] = timeStr.split(" ");
+				let [hour, period] = timeStr.split(" ");
 				const hour24 = period === "AM" ? (hour === "12" ? "00" : hour.padStart(2, "0")) : hour === "12" ? "12" : String(Number(hour) + 12);
 				return `${hour24}:00:00`;
 			}
@@ -615,6 +693,12 @@ export class Google {
 		// Calculate and apply the offset
 		const offset = targetDate.getTime() - localDate.getTime();
 		return new Date(localDate.getTime() - offset);
+	}
+
+	#reportError({ ctx, error, exception }) {
+		ctx.response.status = 503;
+		if (error) ctx.response.body = error;
+		if (exception) ctx.response.body = exception.stack;
 	}
 }
 
