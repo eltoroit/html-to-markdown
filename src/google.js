@@ -89,7 +89,7 @@ export class Google {
 			events.items.forEach(async (event) => {
 				await this.#deleteEvent({ id: event.id });
 			});
-			ctx.response.body = "Calendar Cleared";
+			ctx.response.body = `Calendar Cleared: ${new Date().toJSON()}`;
 		});
 	}
 
@@ -199,7 +199,7 @@ export class Google {
 					}
 				}
 
-				ctx.response.body = "PTO Request completed";
+				ctx.response.body = `PTO Request completed: ${new Date().toJSON()}`;
 			} catch (ex) {
 				this.#reportError({ ctx, exception: ex });
 			}
@@ -221,7 +221,7 @@ export class Google {
 			this.#defaultCalendar = calendars[0];
 			console.log(`Calendar: ${this.#defaultCalendar.id}`);
 			if (ctx) {
-				ctx.response.body = "Calendar found";
+				ctx.response.body = `Calendar found: ${new Date().toJSON()}`;
 			}
 		} else {
 			throw new Error(`Could not find calendar named [${calendarName}]`);
@@ -333,7 +333,7 @@ export class Google {
 		if (this.#isDebug) console.log(response);
 		console.log("Event created");
 		if (ctx) {
-			ctx.response.body = "Event created";
+			ctx.response.body = `Event created: ${new Date().toJSON()}`;
 		}
 	}
 
@@ -363,7 +363,7 @@ export class Google {
 			if (this.#isDebug) console.log(response);
 			console.log("Event updated");
 			if (ctx) {
-				ctx.response.body = "Event updated";
+				ctx.response.body = `Event updated: ${new Date().toJSON()}`;
 			}
 		} else {
 			throw new Error(`Event with ID [${id}] was NOT found to be updated`);
@@ -390,7 +390,7 @@ export class Google {
 			});
 			console.log(`Event with ID: ${id} deleted`);
 			if (ctx) {
-				ctx.response.body = "Event deleted";
+				ctx.response.body = `Event deleted: ${new Date().toJSON()}`;
 			}
 		} else {
 			throw new Error(`Event with ID [${id}] was NOT found to be deleted`);
@@ -502,8 +502,7 @@ export class Google {
 				const nextUrl = `/addScope?state=${state}`;
 				let nextScope = scopesRemaining[0].split("/");
 				nextScope = nextScope[nextScope.length - 1];
-				ctx.response.body = `
-<!DOCTYPE html>
+				ctx.response.body = `<!DOCTYPE html>
 <html>
 	<head><title>Agentforce PTO</title><head>
 	<body>
@@ -516,8 +515,7 @@ export class Google {
 				if (this.#loginResult?.refresh_token) {
 					msg = `Save the new Refresh Token <span style="color:red">${this.#loginResult.refresh_token}</span>`;
 				}
-				ctx.response.body = `
-<!DOCTYPE html>
+				ctx.response.body = `<!DOCTYPE html>
 <html>
 	<head><title>Agentforce PTO</title><head>
 	<body>
@@ -596,7 +594,7 @@ export class Google {
 			if (this.#loginResult.access_token) {
 				console.log("Logged in with Refresh Token");
 				if (ctx) {
-					ctx.response.body = "Logged in with refresh token completed";
+					ctx.response.body = `Logged in with refresh token completed: ${new Date().toJSON()}`;
 				} else {
 					return;
 				}

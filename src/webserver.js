@@ -30,18 +30,17 @@ export class Webserver {
 
 	#homepage() {
 		this.#router.get("/", (ctx) => {
-			ctx.response.body = `
-        <!DOCTYPE html>
-        <html>
-          <head><title>Agentforce PTO</title><head>
-          <body>
-            <h1>Agentforce PTO</h1>
-            <a href="/login">/login</a><br/>
-			<hr/>
-            <a href="/clearCalendar">/clearCalendar</a><br/>
-			<hr/>
-          </body>
-        </html>`;
+			ctx.response.body = `<!DOCTYPE html>
+<html>
+	<head><title>Agentforce PTO</title><head>
+	<body>
+	<h1>Agentforce PTO</h1>
+	<a href="/login">/login</a><br/>
+	<hr/>
+	<a href="/clearCalendar">/clearCalendar</a><br/>
+	<hr/>
+	</body>
+</html>`;
 		});
 	}
 
