@@ -140,7 +140,10 @@ export class Google {
 			};
 			const validateOverlap = ({ start, end }) => {
 				const newEvent = { start, end };
-				const oldEvents = employeeEvents.items.map((event) => ({ start: new Date(event.start.dateTime), end: new Date(event.end.dateTime) }));
+				const oldEvents = employeeEvents.items.map((event) => {
+					const oldEvent = { start: new Date(event.start), end: new Date(event.end) };
+					return oldEvent;
+				});
 				const overlaps = this.#utils.hasOverlap({ events: oldEvents, newEvent });
 				if (overlaps) {
 					throw new Error(`Event requested ${JSON.stringify(newEvent)} overlaps existing request. You had already requeed that time off`);
@@ -204,6 +207,7 @@ export class Google {
 						// Days
 						const hoursRequested = ((new Date(baseEnd) - new Date(baseStart)) / (1000 * 60 * 60)) * daysRequested;
 						validateEntitlementPTO({ hoursRequested });
+						validateOverlap({ start, end });
 						const employeeName = body.employee.Name;
 						const employeeEmail = body.employee.Email;
 						const newEventsPromise = dates.map((date) => {
