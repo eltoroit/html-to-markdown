@@ -282,6 +282,9 @@ export class Google {
 		const items = events.items.map((event) => {
 			return this.#getSimpleEvent({ event });
 		});
+		items.sort((a, b) => {
+			return a.start - b.start;
+		});
 		const output = {
 			size: items.length,
 			items,
@@ -708,10 +711,13 @@ export class Google {
 				output[item] = event[item];
 			}
 		});
+		output.timeZone = event.start.timeZone;
 		output.start = new Date(output.start);
 		output.end = new Date(output.end);
 		output.startDTTM = output.start;
 		output.endDTTM = output.end;
+		output.durationHours = Math.round((100 * (output.end - output.start)) / (1000 * 60 * 60)) / 100;
+		output.isFullDay = output.durationHours >= 8;
 		output.attendees = output.attendees.map((attendeee) => attendeee.email);
 		return output;
 	}
