@@ -88,10 +88,12 @@ export class Google {
 	#clearCalendar_GET({ router }) {
 		router.get("/clearCalendar", async (ctx) => {
 			const events = await this.#findEvents({});
-			events.items.forEach(async (event) => {
-				await this.#deleteEvent({ id: event.id });
+			const deleteEventsPromise = events.items.map((event) => {
+				return this.#deleteEvent({ id: event.id });
 			});
+			await Promise.allSettled(deleteEventsPromise);
 			ctx.response.body = `Calendar Cleared: ${new Date().toJSON()}`;
+			console.log(ctx.response.body);
 		});
 	}
 
@@ -107,7 +109,7 @@ export class Google {
 			};
 			const calculateHoursTaken = () => {
 				return employeeEvents.items.reduce((accumulator, event) => {
-					const eventDurationHR = (new Date(event.end.dateTime) - new Date(event.start.dateTime)) / (1000 * 60 * 60);
+					const eventDurationHR = (new Date(event.end) - new Date(event.start)) / (1000 * 60 * 60);
 					return accumulator + eventDurationHR;
 				}, 0);
 			};
@@ -207,7 +209,6 @@ export class Google {
 						// Days
 						const hoursRequested = ((new Date(baseEnd) - new Date(baseStart)) / (1000 * 60 * 60)) * daysRequested;
 						validateEntitlementPTO({ hoursRequested });
-						validateOverlap({ start, end });
 						const employeeName = body.employee.Name;
 						const employeeEmail = body.employee.Email;
 						const newEventsPromise = dates.map((date) => {
