@@ -280,11 +280,7 @@ export class Google {
 
 		// Parse list
 		const items = events.items.map((event) => {
-			const item = {};
-			this.#itemFields.forEach((field) => {
-				item[field] = event[field];
-			});
-			return item;
+			return this.#getSimpleEvent({ event });
 		});
 		const output = {
 			size: items.length,
@@ -363,7 +359,7 @@ export class Google {
 			},
 		});
 		if (this.#isDebug) console.log(response);
-		const output = this.#getEventDate({ response });
+		const output = this.#getSimpleEvent({ event: response });
 		if (ctx) {
 			ctx.response.type = "json";
 			ctx.response.status = "200";
@@ -397,7 +393,7 @@ export class Google {
 				},
 			});
 			if (this.#isDebug) console.log(response);
-			const output = this.#getEventDate({ response });
+			const output = this.#getSimpleEvent({ event: response });
 			if (ctx) {
 				ctx.response.type = "json";
 				ctx.response.status = "200";
@@ -699,21 +695,23 @@ export class Google {
 		}
 	}
 
-	#getEventDate({ response }) {
+	#getSimpleEvent({ event }) {
 		const output = {};
 		["id", "summary", "description", ["start", "dateTime"], ["end", "dateTime"], ["creator", "email"], "attendees", "status"].forEach((item) => {
 			if (Array.isArray(item)) {
 				const keyName = item.shift();
-				const response2 = response[keyName];
+				const event2 = event[keyName];
 				const key2 = item.shift();
-				const value = response2[key2];
+				const value = event2[key2];
 				output[keyName] = value;
 			} else {
-				output[item] = response[item];
+				output[item] = event[item];
 			}
 		});
 		output.start = new Date(output.start);
 		output.end = new Date(output.end);
+		output.startDTTM = output.start;
+		output.endDTTM = output.end;
 		output.attendees = output.attendees.map((attendeee) => attendeee.email);
 		return output;
 	}
