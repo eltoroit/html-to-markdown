@@ -26,14 +26,14 @@ export class Google {
 		moreRoutes.push(this.#addScopes_GET.bind(this));
 
 		// Calendar events
-		moreRoutes.push(this.#getEvent_GET.bind(this));
+		moreRoutes.push(this.#event_GET.bind(this));
+		moreRoutes.push(this.#event_POST.bind(this));
+		moreRoutes.push(this.#event_PATCH.bind(this));
+		moreRoutes.push(this.#event_DELETE.bind(this));
 		moreRoutes.push(this.#findEvents_GET.bind(this));
 		moreRoutes.push(this.#requestPTO_POST.bind(this));
 		moreRoutes.push(this.#findCalendar_GET.bind(this));
-		moreRoutes.push(this.#createEvent_POST.bind(this));
-		moreRoutes.push(this.#updateEvent_PATCH.bind(this));
 		moreRoutes.push(this.#clearCalendar_GET.bind(this));
-		moreRoutes.push(this.#deleteEvent_DELETE.bind(this));
 	}
 
 	//#region CALENDAR ROUTER
@@ -51,7 +51,7 @@ export class Google {
 		});
 	}
 
-	#getEvent_GET({ router }) {
+	#event_GET({ router }) {
 		router.get("/event", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
@@ -59,17 +59,17 @@ export class Google {
 		});
 	}
 
-	#createEvent_POST({ router }) {
+	#event_POST({ router }) {
 		router.post("/event", async (ctx) => {
 			let { start, end, employeeName, employeeEmail } = await ctx.request.body.json();
-			start = new Date(start);
 			end = new Date(end);
+			start = new Date(start);
 			console.log(start, end, employeeName, employeeEmail);
 			await this.#createEvent({ ctx, start, end, employeeName, employeeEmail });
 		});
 	}
 
-	#updateEvent_PATCH({ router }) {
+	#event_PATCH({ router }) {
 		router.patch("/event", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
@@ -79,7 +79,7 @@ export class Google {
 		});
 	}
 
-	#deleteEvent_DELETE({ router }) {
+	#event_DELETE({ router }) {
 		router.delete("/event", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
