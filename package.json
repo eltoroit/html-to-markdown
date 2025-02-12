@@ -1,6 +1,7 @@
 {
 	"scripts": {
 		"watch": "deno run --watch --allow-all --env-file ./main.js",
+		"watchLogs": "deno run --watch --allow-all --env-file ./src/colors.js",
 		"serve": "deno run $DEBUG_DENO --allow-env --allow-net --allow-read --allow-write --env-file ./main.js",
 		"heroku": "deno run --allow-env --allow-net --allow-read --allow-write ./main.js",
 		"debug:heroku": "./simulateHeroku.sh",

@@ -1,17 +1,9 @@
+import Colors from "./colors.js";
+
 export class Utils {
-	isDebug;
+	static IsDebug;
 
-	constructor({ isDebug }) {
-		this.isDebug = isDebug;
-	}
-
-	reportError({ ctx, error, exception }) {
-		ctx.response.status = 503;
-		if (error) ctx.response.body = error;
-		if (exception) ctx.response.body = exception.stack;
-	}
-
-	getDateTime({ date, time, timeZone }) {
+	static getDateTime({ date, time, timeZone }) {
 		// Handle different time formats
 		const parseTime = (timeStr) => {
 			// If it's in AM/PM format
@@ -58,7 +50,7 @@ export class Utils {
 		}
 	}
 
-	hasOverlap({ events, newEvent }) {
+	static hasOverlap({ events, newEvent }) {
 		const forPrintDTTM = (dttm) => {
 			dttm = new Date(dttm); // Clone the value
 			dttm.setHours(dttm.getHours() - 5); // From GMT to EST
@@ -96,5 +88,33 @@ export class Utils {
 
 			return output;
 		});
+	}
+
+	static reportError({ ctx, error, exception }) {
+		if (error) Utils.#reportError({ ctx, msg: error });
+		if (exception) Utils.#reportException({ ctx, message: error, exception });
+	}
+
+	static #reportException({ ctx, message, exception }) {
+		ET_Asserts.hasData({ value: ctx, message: "ctx" });
+		ET_Asserts.hasData({ value: message, message: "message" });
+		ET_Asserts.hasData({ value: exception, message: "exception" });
+
+		const error = {};
+		if (exception.message) error.message = exception.message;
+		if (exception.stack) error.stack = exception.stack;
+		const msg = Colors.getPrettyJson({ obj: error });
+		Colors.sfdxShowError({ msg });
+		ctx.response.status = 503;
+		ctx.response.body = msg;
+	}
+
+	static #reportError({ ctx, msg }) {
+		ET_Asserts.hasData({ value: ctx, message: "ctx" });
+		ET_Asserts.hasData({ value: message, message: "message" });
+
+		Colors.sfdxShowError({ msg });
+		ctx.response.status = 503;
+		ctx.response.body = msg;
 	}
 }

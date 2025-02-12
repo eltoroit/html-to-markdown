@@ -1,7 +1,6 @@
 import { Utils } from "./utils.js";
 
 export class Google {
-	#utils;
 	#serverRoot;
 	#loginResult;
 	#isDebug = true;
@@ -15,7 +14,7 @@ export class Google {
 
 	constructor({ moreRoutes, isDebug }) {
 		this.#isDebug = isDebug;
-		this.#utils = new Utils({ isDebug });
+		Utils.IsDebug = isDebug;
 		this.#serverRoot = Deno.env.get("SERVER_ROOT");
 
 		// Login
@@ -103,8 +102,8 @@ export class Google {
 				const timeZone = body.employee.TimeZoneSidKey;
 				return await this.#findEvents({
 					query: body.employee.Email,
-					timeMin: this.#utils.getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone }),
-					timeMax: this.#utils.getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone }),
+					timeMin: Utils.getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone }),
+					timeMax: Utils.getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone }),
 				});
 			};
 			const calculateHoursTaken = () => {
@@ -146,7 +145,7 @@ export class Google {
 					const oldEvent = { start: new Date(event.start), end: new Date(event.end) };
 					return oldEvent;
 				});
-				const overlaps = this.#utils.hasOverlap({ events: oldEvents, newEvent });
+				const overlaps = Utils.hasOverlap({ events: oldEvents, newEvent });
 				if (overlaps) {
 					throw new Error(`Event requested ${JSON.stringify(newEvent)} overlaps existing request. You had already requeed that time off`);
 				}
@@ -176,11 +175,11 @@ export class Google {
 					let end;
 					const oldEvent = await this.#getEvent({ id: body.ptoRequest.ptoID });
 					if (body.ptoRequest.ptoStartDate && body.ptoRequest.ptoEndTime) {
-						start = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoStartTime, timeZone: body.employee.TimeZoneSidKey });
-						end = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoEndTime, timeZone: body.employee.TimeZoneSidKey });
+						start = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoStartTime, timeZone: body.employee.TimeZoneSidKey });
+						end = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoEndTime, timeZone: body.employee.TimeZoneSidKey });
 					} else {
-						start = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
-						end = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
+						start = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
+						end = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
 					}
 					const hoursRequested = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
 					if (hoursRequested > this.#businessHours.day) throw new Error("Requesting more than 8 hours is not allowed, you should request a full day");
@@ -195,8 +194,8 @@ export class Google {
 					if (daysRequested >= 1) {
 						// Calculate all the dates and times
 						const dates = [];
-						const baseStart = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
-						const baseEnd = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
+						const baseStart = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
+						const baseEnd = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
 						for (let i = 0; i < daysRequested; i++) {
 							const dttmStart = new Date(baseStart);
 							const dttmEnd = new Date(baseEnd);
@@ -221,8 +220,8 @@ export class Google {
 						await Promise.allSettled(newEventsPromise);
 					} else {
 						// Hours
-						const start = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoStartTime, timeZone: body.employee.TimeZoneSidKey });
-						const end = this.#utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoEndTime, timeZone: body.employee.TimeZoneSidKey });
+						const start = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoStartTime, timeZone: body.employee.TimeZoneSidKey });
+						const end = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoEndTime, timeZone: body.employee.TimeZoneSidKey });
 						const hoursRequested = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
 						if (hoursRequested > this.#businessHours.day) throw new Error("Requesting more than 8 hours is not allowed, you should request a full day");
 						validateEntitlementPTO({ hoursRequested });
@@ -237,8 +236,9 @@ export class Google {
 				ctx.response.type = "json";
 				ctx.response.status = "200";
 				ctx.response.body = output;
+				console.log("Events created");
 			} catch (ex) {
-				this.#utils.reportError({ ctx, exception: ex });
+				Utils.reportError({ ctx, exception: ex });
 			}
 		});
 	}
