@@ -65,8 +65,8 @@ export class Utils {
 			return JSON.stringify(tmp);
 		};
 
-		if (this.isDebug) console.log("---");
-		if (this.isDebug) console.log(`New Event:`, forPrint(newEvent));
+		if (this.isDebug) Colors.Debug({ msg: "---" });
+		if (this.isDebug) Colors.Debug({ msg: `New Event: ${forPrint(newEvent)}` });
 		if (newEvent.start > newEvent.end) {
 			throw new Error("Event start time can't be later than event end time");
 		}
@@ -82,40 +82,63 @@ export class Utils {
 
 			const output = newStartOverlaps || newEndOverlaps || encompassesExisting;
 			if (this.isDebug) {
-				console.log(
-					`Old Event: ${forPrint(event)} | output: ${output} | newStartOverlaps: ${newStartOverlaps} |  newEndOverlaps: ${newEndOverlaps} | encompassesExisting: ${encompassesExisting}`
-				);
+				Colors.Debug({
+					msg: `Old Event: ${forPrint(event)} | output: ${output} | newStartOverlaps: ${newStartOverlaps} |  newEndOverlaps: ${newEndOverlaps} | encompassesExisting: ${encompassesExisting}`,
+				});
 			}
 
 			return output;
 		});
 	}
 
-	static reportError({ ctx, error, exception }) {
-		if (error) Utils.#reportError({ ctx, msg: error });
-		if (exception) Utils.#reportException({ ctx, message: error, exception });
+	static reportError({ ctx, error, ex }) {
+		// ET_Asserts.hasData({ value: ctx, message: "ctx" });
+
+		let msg;
+		if (error) msg = Utils.#reportError({ msg: error });
+		if (ex) msg = Utils.#reportException({ ex });
+		if (ctx) {
+			ctx.response.status = 503;
+			ctx.response.body = msg;
+		}
 	}
 
-	static #reportException({ ctx, message, exception }) {
-		ET_Asserts.hasData({ value: ctx, message: "ctx" });
-		// ET_Asserts.hasData({ value: message, message: "message" });
-		// ET_Asserts.hasData({ value: exception, message: "exception" });
+	static #reportException({ ex }) {
+		ET_Asserts.hasData({ value: ex, message: "ex" });
 
-		const error = {};
-		if (exception.message) error.message = exception.message;
-		if (exception.stack) error.stack = exception.stack;
-		const msg = Colors.getPrettyJson({ obj: error });
-		Colors.error({ msg });
-		ctx.response.status = 503;
-		ctx.response.body = msg;
+		let error = null;
+		if (ex.stack) {
+			error = ex.stack;
+			const lines = error.split("\n").filter((line) => {
+				if (line.trim().startsWith("at")) {
+					let included = true;
+					if (line.includes("HerokuPTO/src/utils.js")) included &= false;
+					if (line.includes("HerokuPTO/src/colors.js")) included &= false;
+					if (line.includes("HerokuPTO/src")) included &= true;
+					return included;
+				} else {
+					return true;
+				}
+				return true;
+			});
+			lines.forEach((line) => {
+				Colors.errorDoNotUse({ msg: line });
+			});
+		} else if (error.message) {
+			error = ex.message;
+			Colors.errorDoNotUse({ msg: error.message });
+		} else {
+			// This is a valid use for console.log();
+			console.log(ex);
+			throw new Error("What was the exception?");
+		}
+		return error;
 	}
 
-	static #reportError({ ctx, msg }) {
-		ET_Asserts.hasData({ value: ctx, message: "ctx" });
-		ET_Asserts.hasData({ value: message, message: "message" });
+	static #reportError({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		Colors.error({ msg });
-		ctx.response.status = 503;
-		ctx.response.body = msg;
+		Colors.errorDoNotUse({ msg });
+		return msg;
 	}
 }

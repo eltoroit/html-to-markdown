@@ -1,3 +1,4 @@
+import { Utils } from "./utils.js";
 import ET_Asserts from "./etAsserts.js";
 
 // Define variables
@@ -39,67 +40,87 @@ export default class Colors {
 	}
 
 	//#region COLORS
+	static info({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
+
+		console.log(colorBgBlack + colorBright + colorFgWhite + this.#msgToText({ level: "INFO", msg }) + colorReset);
+	}
+
+	static fine({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
+		console.log(colorBgBlack + colorBright + colorFgCyan + this.#msgToText({ level: "FINE", msg }) + colorReset);
+	}
+
+	static finest({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
+
+		console.log(colorBgBlack + colorBright + colorFgMagenta + this.#msgToText({ level: "FINEST", msg }) + colorReset);
+	}
+
+	static warn({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
+
+		console.log(colorBgBlack + colorBright + colorFgYellow + this.#msgToText({ level: "WARN", msg }) + colorReset);
+	}
+
 	static debug({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		console.log(colorBgBlack + colorBright + colorFgGray + msg + colorReset);
+		console.log(colorBgBlack + colorBright + colorFgGray + this.#msgToText({ level: "DEBUG", msg }) + colorReset);
 	}
 
-	static command({ msg }) {
+	static errorDoNotUse({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		console.log(colorBgBlack + colorBright + colorFgYellow + msg + colorReset);
-	}
-
-	static status({ msg }) {
-		ET_Asserts.hasData({ value: msg, message: "msg" });
-
-		console.log(colorBgBlack + colorBright + colorFgMagenta + msg + colorReset);
-	}
-
-	static note({ msg }) {
-		ET_Asserts.hasData({ value: msg, message: "msg" });
-
-		console.log(colorBgBlack + colorBright + colorFgWhite + msg + colorReset);
-	}
-
-	static error({ msg }) {
-		ET_Asserts.hasData({ value: msg, message: "msg" });
-
-		console.log(colorBgBlack + colorBright + colorFgRed + msg + colorReset);
+		console.log(colorBgBlack + colorBright + colorFgRed + this.#msgToText({ level: "ERROR", msg }) + colorReset);
 	}
 
 	static success({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		console.log(colorBgBlack + colorBright + colorFgGreen + msg + colorReset);
+		console.log(colorBgBlack + colorBright + colorFgGreen + this.#msgToText({ level: "SUCCESS", msg }) + colorReset);
 	}
 
-	static message({ msg }) {
-		ET_Asserts.hasData({ value: msg, message: "msg" });
-		console.log(colorBgBlack + colorBright + colorFgCyan + msg + colorReset);
-	}
-
-	static done() {
-		console.log(colorBgBlack + colorBright + colorFgGreen + "Task Completed" + colorReset);
-		console.log(colorBgBlack + colorBright + colorFgGreen + new Date() + colorReset);
-	}
 	//#endregion
 
-	static getPrettyJson({ obj }) {
-		ET_Asserts.hasData({ value: obj, message: "obj" });
+	static #msgToText({ level, msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
+		ET_Asserts.hasData({ value: level, message: "level" });
 
-		return JSON.stringify(obj, null, 4);
+		function isPrimitive(value) {
+			let type = Object.prototype.toString.call(value);
+			type = type.substring(type.indexOf(" ") + 1, type.indexOf("]"));
+			return !["array", "object", "function"].includes(type.toLowerCase());
+		}
+
+		let output;
+		if (isPrimitive(msg)) {
+			output = msg;
+		} else {
+			output = JSON.stringify(msg);
+		}
+		output = `${level.toUpperCase().padEnd(10, "_")}: ${output}`;
+		return output;
 	}
 
 	static tests() {
-		Colors.debug({ msg: "debug" });
-		Colors.command({ msg: "command" });
-		Colors.status({ msg: "status" });
-		Colors.note({ msg: "note" });
-		Colors.error({ msg: "error" });
-		Colors.success({ msg: "success" });
-		Colors.message({ msg: "message" });
-		Colors.done();
+		console.log(clearScreenCode);
+
+		Colors.debug({ msg: { text: "debug" } });
+		Colors.debug({ msg: ["debug"] });
+		console.log("");
+		Colors.info({ msg: "1. INFO" });
+		Colors.fine({ msg: "2. FINE" });
+		Colors.finest({ msg: "4. FINEST" });
+		Colors.warn({ msg: "3. WARN" });
+		console.log("");
+		Colors.debug({ msg: "DEBUG" });
+		Colors.success({ msg: "SUCCESS" });
+		Utils.reportError({ error: "ERROR" });
+		try {
+			throw new Error("Testing Exceptions");
+		} catch (ex) {
+			Utils.reportError({ ex });
+		}
 	}
 }

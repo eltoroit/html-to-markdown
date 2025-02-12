@@ -1,3 +1,4 @@
+import Colors from "./colors.js";
 import { Application, Router } from "jsr:@oak/oak";
 
 export class Webserver {
@@ -49,7 +50,7 @@ export class Webserver {
 
 	#serveHTTP({ app, port }) {
 		app.listen({ port });
-		console.log(`Server running on HTTP ${port}: http://localhost:${port}`);
+		Colors.fine({ msg: `Server running on HTTP ${port}: http://localhost:${port}` });
 	}
 
 	async #serveHTTPS({ app, port }) {
@@ -68,7 +69,7 @@ export class Webserver {
 			cert: certs.public,
 			key: certs.private,
 		});
-		console.log(`Server running on HTTPS port ${port}: https://localhost:${port}`);
+		Colors.fine({ msg: `Server running on HTTPS port ${port}: https://localhost:${port}` });
 	}
 }
 

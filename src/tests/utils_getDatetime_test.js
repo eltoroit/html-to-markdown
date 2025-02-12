@@ -20,7 +20,6 @@ testValues.forEach((testValue) => {
 	testValue.times.forEach((time) => {
 		Deno.test(`timeZone: ${timeZone} | Date: ${date} | Time: ${time}`, () => {
 			const timestamp = Utils.getDateTime({ date, time, timeZone });
-			// console.log(`timeZone: ${timeZone} | Date: ${date} | Time: ${time}`);
 			assertEquals(timestamp, testValue.expected);
 		});
 	});
@@ -33,6 +32,6 @@ Deno.test("Date ignored if present in time", () => {
 		time = "2025-02-14T14:00:00.000Z",
 		expected = new Date(time);
 	const timestamp = Utils.getDateTime({ date, time, timeZone });
-	if (Utils.IsDebug) console.log(`ISO: ${timestamp.toISOString()} | ${timestamp} | timeZone: ${timeZone} | Date: ${date} | Time: ${time}`);
+	if (Utils.IsDebug) Colors.debug({ msg: `ISO: ${timestamp.toISOString()} | ${timestamp} | timeZone: ${timeZone} | Date: ${date} | Time: ${time}` });
 	assertEquals(timestamp, expected);
 });

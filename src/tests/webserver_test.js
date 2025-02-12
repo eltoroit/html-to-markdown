@@ -8,9 +8,9 @@ Colors.debug({ msg: serverPath });
 const worker = new Worker(serverPath, { type: "module", deno: true });
 
 // Wait for a moment to let the server start (this is a little hacky actually)
-Colors.command({ msg: "Waiting..." });
+Colors.warn({ msg: "Waiting..." });
 await new Promise((resolve) => setTimeout(resolve, 5e3));
-Colors.success({ msg: "Resume" });
+Colors.warn({ msg: "Resume" });
 
 Deno.test("Testing webserver", async (t) => {
 	const response = await fetch("http://localhost:3000/test");
