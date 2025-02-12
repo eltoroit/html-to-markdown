@@ -45,16 +45,16 @@ export default class Colors {
 		console.log(colorBgBlack + colorBright + colorFgGray + msg + colorReset);
 	}
 
-	static command({ command }) {
-		ET_Asserts.hasData({ value: command, message: "command" });
+	static command({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		console.log(colorBgBlack + colorBright + colorFgYellow + command + colorReset);
+		console.log(colorBgBlack + colorBright + colorFgYellow + msg + colorReset);
 	}
 
-	static status({ status }) {
-		ET_Asserts.hasData({ value: status, message: "status" });
+	static status({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		console.log(colorBgBlack + colorBright + colorFgMagenta + status + colorReset);
+		console.log(colorBgBlack + colorBright + colorFgMagenta + msg + colorReset);
 	}
 
 	static note({ msg }) {
@@ -94,8 +94,8 @@ export default class Colors {
 
 	static tests() {
 		Colors.debug({ msg: "debug" });
-		Colors.command({ command: "command" });
-		Colors.status({ status: "status" });
+		Colors.command({ msg: "command" });
+		Colors.status({ msg: "status" });
 		Colors.note({ msg: "note" });
 		Colors.error({ msg: "error" });
 		Colors.success({ msg: "success" });

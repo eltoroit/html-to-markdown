@@ -1,12 +1,13 @@
 {
 	"scripts": {
 		"watch": "deno run --watch --allow-all --env-file ./main.js",
-		"watchLogs": "deno run --watch --allow-all --env-file ./src/colors.js",
 		"serve": "deno run $DEBUG_DENO --allow-env --allow-net --allow-read --allow-write --env-file ./main.js",
 		"heroku": "deno run --allow-env --allow-net --allow-read --allow-write ./main.js",
-		"debug:heroku": "./simulateHeroku.sh",
-		"unitTesting": "deno test src/tests/overlap_test.js",
-		"debug:unitTesting": "deno test --inspect-brk src/tests/overlap_test.js"
+		"heroku:logs": "heroku logs --source app --app agentforce-pto --tail",
+		"heroku:debug": "./simulateHeroku.sh",
+		"test:one": "deno test --allow-all ./src/tests/webserver_test.js",
+		"test:debug:one": "deno test --inspect-brk --allow-all ./src/tests/webserver_test.js",
+		"test:all": "deno test --allow-all"
 	},
 	"dependencies": {
 		"path-to-regexp": "^6.3.0"

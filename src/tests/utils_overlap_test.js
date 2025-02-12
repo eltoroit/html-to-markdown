@@ -2,10 +2,10 @@ import { Utils } from "../utils.js";
 import { assert, assertEquals } from "jsr:@std/assert";
 
 let events = [];
-const utils = new Utils({ isDebug: false });
+Utils.IsDebug = false;
 
 function addEvent(newEvent) {
-	const hasOverlap = utils.hasOverlap({ events, newEvent });
+	const hasOverlap = Utils.hasOverlap({ events, newEvent });
 	if (hasOverlap) return false;
 	events.push(newEvent);
 	events.sort((a, b) => a.startTime - b.startTime);

@@ -1,15 +1,11 @@
 import { Application, Router } from "jsr:@oak/oak";
 
 export class Webserver {
-	#isDebug = false;
 	#router = new Router();
 
-	constructor({ moreRoutes, isDebug }) {
-		this.#isDebug = isDebug;
-		this.#initializeServer({ moreRoutes });
-	}
+	constructor() {}
 
-	async #initializeServer({ moreRoutes }) {
+	async initializeServer({ moreRoutes }) {
 		this.#router = new Router();
 		const app = new Application();
 		this.#makeRoutes({ moreRoutes });
@@ -17,12 +13,13 @@ export class Webserver {
 		app.use(this.#router.allowedMethods());
 
 		const port = parseInt(Deno.env.get("PORT") || "3000");
-		this.#serveHTTP({ app, port });
-		// this.#serveHTTPS({ app, port });
+		await this.#serveHTTP({ app, port });
+		// await this.#serveHTTPS({ app, port });
 	}
 
 	#makeRoutes({ moreRoutes }) {
 		this.#homepage();
+		this.#test();
 		for (const route of moreRoutes) {
 			route({ router: this.#router });
 		}
@@ -41,6 +38,12 @@ export class Webserver {
 	<hr/>
 	</body>
 </html>`;
+		});
+	}
+
+	#test() {
+		this.#router.get("/test", (ctx) => {
+			ctx.response.body = `HELLO WORLD`;
 		});
 	}
 

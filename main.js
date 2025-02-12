@@ -2,9 +2,12 @@ import Colors from "./src/colors.js";
 import { Google } from "./src/google.js";
 import { Webserver } from "./src/webserver.js";
 
-Colors.tests();
+// deno-lint-ignore no-constant-condition
+if (true) {
+	Colors.tests();
+}
 const moreRoutes = [];
-const isDebug = Deno.env.get("IS_DEBUG") === "TRUE";
-console.log(`Debug Mode: ${isDebug}`);
-new Google({ moreRoutes, isDebug });
-new Webserver({ moreRoutes, isDebug });
+new Google({ moreRoutes });
+const ws = new Webserver();
+await ws.initializeServer({ moreRoutes });
+Colors.success({ msg: "Server Ready" });

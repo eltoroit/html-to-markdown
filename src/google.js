@@ -12,9 +12,12 @@ export class Google {
 	#defaultCalendar = {};
 	#itemFields = ["id", "summary", "description", "start", "end", "attendees"];
 
-	constructor({ moreRoutes, isDebug }) {
-		this.#isDebug = isDebug;
-		Utils.IsDebug = isDebug;
+	constructor({ moreRoutes }) {
+		this.#isDebug = Deno.env.get("IS_DEBUG") === "TRUE";
+		console.log(`Debug Mode: ${this.#isDebug}`);
+		Utils.IsDebug = this.#isDebug;
+
+		// Set Variables
 		this.#serverRoot = Deno.env.get("SERVER_ROOT");
 
 		// Login
