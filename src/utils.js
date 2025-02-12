@@ -1,4 +1,5 @@
 import Colors from "./colors.js";
+import ET_Asserts from "./etAsserts.js";
 
 export class Utils {
 	static IsDebug;
@@ -97,14 +98,14 @@ export class Utils {
 
 	static #reportException({ ctx, message, exception }) {
 		ET_Asserts.hasData({ value: ctx, message: "ctx" });
-		ET_Asserts.hasData({ value: message, message: "message" });
-		ET_Asserts.hasData({ value: exception, message: "exception" });
+		// ET_Asserts.hasData({ value: message, message: "message" });
+		// ET_Asserts.hasData({ value: exception, message: "exception" });
 
 		const error = {};
 		if (exception.message) error.message = exception.message;
 		if (exception.stack) error.stack = exception.stack;
 		const msg = Colors.getPrettyJson({ obj: error });
-		Colors.sfdxShowError({ msg });
+		Colors.error({ msg });
 		ctx.response.status = 503;
 		ctx.response.body = msg;
 	}
@@ -113,7 +114,7 @@ export class Utils {
 		ET_Asserts.hasData({ value: ctx, message: "ctx" });
 		ET_Asserts.hasData({ value: message, message: "message" });
 
-		Colors.sfdxShowError({ msg });
+		Colors.error({ msg });
 		ctx.response.status = 503;
 		ctx.response.body = msg;
 	}

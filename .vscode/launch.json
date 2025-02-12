@@ -25,20 +25,20 @@
 			"skipFiles": ["<node_internals>/**"],
 			"internalConsoleOptions": "neverOpen",
 			"port": 9229
-		},
-		{
-			"name": "ET: Tests",
-			"type": "node",
-			"request": "launch",
-			"runtimeExecutable": "deno",
-			"runtimeArgs": ["run", "--allow-all", "--env-file", "--inspect-brk"],
-			// "program": "${workspaceFolder}/src/tests/getDatetime_test.js",
-			"program": "${workspaceFolder}/src/tests/overlap_test.js",
-			"cwd": "${workspaceFolder}",
-			"outputCapture": "std",
-			"console": "integratedTerminal",
-			"internalConsoleOptions": "neverOpen",
-			"attachSimplePort": 9229
 		}
+		// {
+		// 	"name": "ET: Tests",
+		// 	"type": "node",
+		// 	"request": "launch",
+		// 	"runtimeExecutable": "deno",
+		// 	"runtimeArgs": ["run", "--allow-all", "--env-file", "--inspect-brk"],
+		// 	// "program": "${workspaceFolder}/src/tests/getDatetime_test.js",
+		// 	"program": "${workspaceFolder}/src/tests/overlap_test.js",
+		// 	"cwd": "${workspaceFolder}",
+		// 	"outputCapture": "std",
+		// 	"console": "integratedTerminal",
+		// 	"internalConsoleOptions": "neverOpen",
+		// 	"attachSimplePort": 9229
+		// }
 	]
 }
