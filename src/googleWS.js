@@ -1,8 +1,8 @@
+import Utils from "./utils.js";
 import Colors from "./colors.js";
-import { Utils } from "./utils.js";
-import { GooglePTO } from "./googlePTO.js";
+import GooglePTO from "./googlePTO.js";
 
-export class GoogleWS {
+export default class GoogleWS {
 	#googlePTO;
 	loginResult;
 	#callbackServer;
@@ -24,24 +24,143 @@ export class GoogleWS {
 		moreRoutes.push(this.#addScopes_GET.bind(this));
 
 		// // Calendar events
-		// moreRoutes.push(this.#event_GET.bind(this));
-		// moreRoutes.push(this.#event_POST.bind(this));
-		// moreRoutes.push(this.#event_PATCH.bind(this));
-		// moreRoutes.push(this.#event_DELETE.bind(this));
-		// moreRoutes.push(this.#findEvents_GET.bind(this));
-		// moreRoutes.push(this.#requestPTO_POST.bind(this));
+		moreRoutes.push(this.#event_GET.bind(this));
+		moreRoutes.push(this.#event_POST.bind(this));
+		moreRoutes.push(this.#event_PATCH.bind(this));
+		moreRoutes.push(this.#event_DELETE.bind(this));
+		moreRoutes.push(this.#findEvents_GET.bind(this));
+		moreRoutes.push(this.#requestPTO_POST.bind(this));
 		moreRoutes.push(this.#findCalendar_GET.bind(this));
-		// moreRoutes.push(this.#clearCalendar_GET.bind(this));
+		moreRoutes.push(this.#clearCalendar_GET.bind(this));
 	}
 
 	//#region CALENDAR ROUTER
 	#findCalendar_GET({ router }) {
 		router.get(`/findCalendar`, async (ctx) => {
-			Colors.finest({ msg: `${this.#callbackServer}/findCalendar` });
-			const body = await this.#googlePTO.findCalendar();
-			ctx.response.body = body;
+			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			try {
+				const body = await this.#googlePTO.findCalendar();
+				ctx.response.status = "200";
+				ctx.response.body = body;
+			} catch (ex) {
+				Utils.reportError({ ctx, ex });
+			}
 		});
 	}
+
+	#findEvents_GET({ router }) {
+		router.get("/findEvents", async (ctx) => {
+			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			const queryParams = ctx.request.url.searchParams;
+			const query = queryParams.get("query");
+			try {
+				const body = await this.#googlePTO.findEvents({ query });
+				ctx.response.type = "json";
+				ctx.response.status = "200";
+				ctx.response.body = body;
+			} catch (ex) {
+				Utils.reportError({ ctx, ex });
+			}
+		});
+	}
+
+	#event_GET({ router }) {
+		router.get("/event", async (ctx) => {
+			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			const queryParams = ctx.request.url.searchParams;
+			const id = queryParams.get("id");
+			try {
+				const body = await this.#googlePTO.getEvent({ id });
+				ctx.response.type = "json";
+				ctx.response.status = "200";
+				ctx.response.body = body;
+			} catch (ex) {
+				Utils.reportError({ ctx, ex });
+			}
+		});
+	}
+
+	#event_POST({ router }) {
+		router.post("/event", async (ctx) => {
+			const bodyRequest = await ctx.request.body.json();
+			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			Colors.finest({ msg: bodyRequest });
+			try {
+				const bodyResponse = await this.#googlePTO.createEvent(bodyRequest);
+				ctx.response.type = "json";
+				ctx.response.status = "200";
+				ctx.response.body = bodyResponse;
+			} catch (ex) {
+				Utils.reportError({ ctx, ex });
+			}
+		});
+	}
+
+	#event_PATCH({ router }) {
+		router.patch("/event", async (ctx) => {
+			const queryParams = ctx.request.url.searchParams;
+			const id = queryParams.get("id");
+			const bodyRequest = await ctx.request.body.json();
+			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			Colors.finest({ msg: bodyRequest });
+			try {
+				const bodyResponse = await this.#googlePTO.updateEvent({ id, ...bodyRequest });
+				ctx.response.type = "json";
+				ctx.response.status = "200";
+				ctx.response.body = bodyResponse;
+			} catch (ex) {
+				Utils.reportError({ ctx, ex });
+			}
+		});
+	}
+
+	#event_DELETE({ router }) {
+		router.delete("/event", async (ctx) => {
+			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			const queryParams = ctx.request.url.searchParams;
+			const id = queryParams.get("id");
+			try {
+				const body = await this.#googlePTO.deleteEvent({ id });
+				ctx.response.type = "json";
+				ctx.response.status = "200";
+				ctx.response.body = body;
+			} catch (ex) {
+				Utils.reportError({ ctx, ex });
+			}
+		});
+	}
+
+	#clearCalendar_GET({ router }) {
+		router.get("/clearCalendar", async (ctx) => {
+			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			try {
+				const body = await this.#googlePTO.clearCalendar();
+				ctx.response.type = "json";
+				ctx.response.status = "200";
+				ctx.response.body = body;
+			} catch (ex) {
+				Utils.reportError({ ctx, ex });
+			}
+		});
+	}
+
+	#requestPTO_POST({ router }) {
+		router.post("/requestPTO", async (ctx) => {
+			const bodyRequest = await ctx.request.body.json();
+			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			Colors.finest({ msg: bodyRequest });
+			try {
+				const bodyResponse = await this.#googlePTO.requestPTO(bodyRequest);
+				ctx.response.type = "json";
+				ctx.response.status = "200";
+				ctx.response.body = bodyResponse;
+			} catch (ex) {
+				Utils.reportError({ ctx, ex });
+			}
+		});
+	}
+
+	//#endregion
 
 	//#region LOGIN
 	get #scopesRequired() {
@@ -89,7 +208,8 @@ export class GoogleWS {
 			};
 
 			try {
-				await this.loginWithRefreshToken({ ctx });
+				const body = await this.loginWithRefreshToken();
+				ctx.response.body = body;
 			} catch (ex) {
 				Utils.reportError({ error: "Unable to login with Refresh Token" });
 				Utils.reportError({ ex });
@@ -118,6 +238,7 @@ export class GoogleWS {
 					Colors.debug({ msg: `${key}: ${value}` });
 				}
 			}
+			Colors.debug({ msg: "Swapping code for Access Token" });
 			const response = await fetch("https://oauth2.googleapis.com/token", {
 				method: "POST",
 				headers: {
@@ -203,7 +324,7 @@ export class GoogleWS {
 		});
 	}
 
-	async loginWithRefreshToken({ ctx }) {
+	async loginWithRefreshToken() {
 		const getRefreshToken = () => {
 			try {
 				// const path = "secrets/google.json";
@@ -222,6 +343,7 @@ export class GoogleWS {
 		};
 
 		const login = async (refresh_token) => {
+			Colors.debug({ msg: "Requesting Access Token using Refresh Token" });
 			const response = await fetch("https://oauth2.googleapis.com/token", {
 				method: "POST",
 				headers: {
@@ -238,11 +360,7 @@ export class GoogleWS {
 			if (this.#isDebug) Colors.debug({ msg: this.loginResult });
 			if (this.loginResult.access_token) {
 				Colors.fine({ msg: "Logged in with Refresh Token" });
-				if (ctx) {
-					ctx.response.body = `Logged in with refresh token completed: ${new Date().toJSON()}`;
-				} else {
-					return;
-				}
+				return `Logged in with refresh token completed: ${new Date().toJSON()}`;
 			} else {
 				throw new Error("Unable to get Access Token using Refresh Token");
 			}
@@ -258,207 +376,3 @@ export class GoogleWS {
 	}
 	//#endregion
 }
-
-// #findEvents_GET({ router }) {
-// 	router.get("/findEvents", async (ctx) => {
-// 		const queryParams = ctx.request.url.searchParams;
-// 		const query = queryParams.get("query");
-// 		await this.#findEvents({ ctx, query });
-// 	});
-// }
-
-// #event_GET({ router }) {
-// 	router.get("/event", async (ctx) => {
-// 		const queryParams = ctx.request.url.searchParams;
-// 		const id = queryParams.get("id");
-// 		await this.#getEvent({ ctx, id });
-// 	});
-// }
-
-// #event_POST({ router }) {
-// 	router.post("/event", async (ctx) => {
-// 		let { start, end, employeeName, employeeEmail } = await ctx.request.body.json();
-// 		end = new Date(end);
-// 		start = new Date(start);
-// 		console.log(start, end, employeeName, employeeEmail);
-// 		await this.#createEvent({ ctx, start, end, employeeName, employeeEmail });
-// 	});
-// }
-
-// #event_PATCH({ router }) {
-// 	router.patch("/event", async (ctx) => {
-// 		const queryParams = ctx.request.url.searchParams;
-// 		const id = queryParams.get("id");
-// 		const { start, end } = await ctx.request.body.json();
-// 		console.log(id, start, end);
-// 		await this.#updateEvent({ ctx, id, start, end });
-// 	});
-// }
-
-// #event_DELETE({ router }) {
-// 	router.delete("/event", async (ctx) => {
-// 		const queryParams = ctx.request.url.searchParams;
-// 		const id = queryParams.get("id");
-// 		await this.#deleteEvent({ ctx, id });
-// 	});
-// }
-
-// #clearCalendar_GET({ router }) {
-// 	router.get("/clearCalendar", async (ctx) => {
-// 		const events = await this.#findEvents({});
-// 		const deleteEventsPromise = events.items.map((event) => {
-// 			return this.#deleteEvent({ id: event.id });
-// 		});
-// 		await Promise.allSettled(deleteEventsPromise);
-// 		ctx.response.body = `Calendar Cleared: ${new Date().toJSON()}`;
-// 		console.log(ctx.response.body);
-// 	});
-// }
-
-// #requestPTO_POST({ router }) {
-// 	router.post("/requestPTO", async (ctx) => {
-// 		const findEmployeeEvents = async ({ year }) => {
-// 			const timeZone = body.employee.TimeZoneSidKey;
-// 			return await this.#findEvents({
-// 				query: body.employee.Email,
-// 				timeMin: Utils.getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone }),
-// 				timeMax: Utils.getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone }),
-// 			});
-// 		};
-// 		const calculateHoursTaken = () => {
-// 			return employeeEvents.items.reduce((accumulator, event) => {
-// 				const eventDurationHR = (new Date(event.end) - new Date(event.start)) / (1000 * 60 * 60);
-// 				return accumulator + eventDurationHR;
-// 			}, 0);
-// 		};
-// 		const validateHours = () => {
-// 			const daysRequested = body.ptoRequest.ptoDays;
-// 			const fraction = daysRequested - Math.floor(daysRequested);
-// 			if (daysRequested >= 1) {
-// 				if (!fraction) return daysRequested;
-// 				throw new Error(`Days requested ${daysRequested} can not have fractions when requesting more than one day`);
-// 			} else {
-// 				if (fraction) return daysRequested;
-// 				if (daysRequested === 0) throw new Error(`Days requested ${daysRequested} must be greater than 0`);
-// 				throw new Error(`Days requested ${daysRequested} must be a fraction when requesting less than one day`);
-// 			}
-// 		};
-// 		const validateEntitlementPTO = ({ oldEvent, hoursRequested }) => {
-// 			let durationOldEvent = 0;
-// 			if (oldEvent) {
-// 				durationOldEvent = (new Date(oldEvent.end.dateTime) - new Date(oldEvent.start.dateTime)) / (1000 * 60 * 60);
-// 			}
-// 			const totalHours = hoursTaken - durationOldEvent + hoursRequested;
-// 			const hoursEntitled = body.ptoRequest.ptoEntitled * this.#businessHours.day;
-// 			if (totalHours > hoursEntitled) {
-// 				let msg = "";
-// 				msg += "Request has been denied. ";
-// 				msg += "This request exceeds the amount of hours you are entitled to request per year. ";
-// 				msg += `You have taken ${(hoursTaken / this.#businessHours.day).toFixed(1)} days`;
-// 				throw new Error(msg);
-// 			}
-// 		};
-// 		const validateOverlap = ({ start, end }) => {
-// 			const newEvent = { start, end };
-// 			const oldEvents = employeeEvents.items.map((event) => {
-// 				const oldEvent = { start: new Date(event.start), end: new Date(event.end) };
-// 				return oldEvent;
-// 			});
-// 			const overlaps = Utils.hasOverlap({ events: oldEvents, newEvent });
-// 			if (overlaps) {
-// 				throw new Error(`Event requested ${JSON.stringify(newEvent)} overlaps existing request. You had already requeed that time off`);
-// 			}
-// 		};
-
-// 		// Parse body
-
-// 		let body;
-// 		let isUpdating;
-// 		let hoursTaken;
-// 		let daysRequested;
-// 		let employeeEvents;
-// 		try {
-// 			if (!this.#defaultCalendar.id) {
-// 				await this.#findCalendar({});
-// 			}
-
-// 			body = await ctx.request.body.json();
-// 			daysRequested = validateHours();
-// 			employeeEvents = await findEmployeeEvents({ year: new Date().getFullYear() });
-// 			hoursTaken = calculateHoursTaken();
-// 			isUpdating = body.ptoRequest.ptoID !== null;
-
-// 			const output = [];
-// 			if (isUpdating) {
-// 				let start;
-// 				let end;
-// 				const oldEvent = await this.#getEvent({ id: body.ptoRequest.ptoID });
-// 				if (body.ptoRequest.ptoStartDate && body.ptoRequest.ptoEndTime) {
-// 					start = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoStartTime, timeZone: body.employee.TimeZoneSidKey });
-// 					end = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoEndTime, timeZone: body.employee.TimeZoneSidKey });
-// 				} else {
-// 					start = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
-// 					end = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
-// 				}
-// 				const hoursRequested = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
-// 				if (hoursRequested > this.#businessHours.day) throw new Error("Requesting more than 8 hours is not allowed, you should request a full day");
-// 				validateEntitlementPTO({ oldEvent, hoursRequested });
-// 				// Remove old event because maybe the overlap is with the old event.
-// 				employeeEvents.items = employeeEvents.items.filter((event) => event.id !== body.ptoRequest.ptoID);
-// 				validateOverlap({ start, end });
-// 				const newEvent = await this.#updateEvent({ id: body.ptoRequest.ptoID, start, end });
-// 				output.push(newEvent);
-// 			} else {
-// 				console.log("create");
-// 				if (daysRequested >= 1) {
-// 					// Calculate all the dates and times
-// 					const dates = [];
-// 					const baseStart = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.start, timeZone: body.employee.TimeZoneSidKey });
-// 					const baseEnd = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: this.#businessHours.end, timeZone: body.employee.TimeZoneSidKey });
-// 					for (let i = 0; i < daysRequested; i++) {
-// 						const dttmStart = new Date(baseStart);
-// 						const dttmEnd = new Date(baseEnd);
-// 						dttmStart.setDate(dttmStart.getDate() + i);
-// 						dttmEnd.setDate(dttmEnd.getDate() + i);
-// 						dates.push({ start: dttmStart, end: dttmEnd });
-// 						validateOverlap({ start: dttmStart, end: dttmEnd });
-// 					}
-
-// 					// Days
-// 					const hoursRequested = ((new Date(baseEnd) - new Date(baseStart)) / (1000 * 60 * 60)) * daysRequested;
-// 					validateEntitlementPTO({ hoursRequested });
-// 					const employeeName = body.employee.Name;
-// 					const employeeEmail = body.employee.Email;
-// 					const newEventsPromise = dates.map((date) => {
-// 						const p = this.#createEvent({ start: date.start, end: date.end, employeeName, employeeEmail });
-// 						p.then((newEvent) => {
-// 							output.push(newEvent);
-// 						});
-// 						return p;
-// 					});
-// 					await Promise.allSettled(newEventsPromise);
-// 				} else {
-// 					// Hours
-// 					const start = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoStartTime, timeZone: body.employee.TimeZoneSidKey });
-// 					const end = Utils.getDateTime({ date: body.ptoRequest.ptoStartDate, time: body.ptoRequest.ptoEndTime, timeZone: body.employee.TimeZoneSidKey });
-// 					const hoursRequested = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
-// 					if (hoursRequested > this.#businessHours.day) throw new Error("Requesting more than 8 hours is not allowed, you should request a full day");
-// 					validateEntitlementPTO({ hoursRequested });
-// 					validateOverlap({ start, end });
-// 					const employeeName = body.employee.Name;
-// 					const employeeEmail = body.employee.Email;
-// 					const newEvent = await this.#createEvent({ start, end, employeeName, employeeEmail });
-// 					output.push(newEvent);
-// 				}
-// 			}
-
-// 			ctx.response.type = "json";
-// 			ctx.response.status = "200";
-// 			ctx.response.body = output;
-// 			console.log("Events created");
-// 		} catch (ex) {
-// 			Utils.reportError({ ctx, exception: ex });
-// 		}
-// 	});
-// }
-// //#endregion

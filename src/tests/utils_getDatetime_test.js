@@ -1,4 +1,4 @@
-import { Utils } from "../utils.js";
+import Utils from "../utils.js";
 import { assertEquals } from "jsr:@std/assert";
 
 Utils.IsDebug = false;

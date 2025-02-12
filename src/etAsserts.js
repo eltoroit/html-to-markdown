@@ -11,11 +11,15 @@ export default class ET_Asserts {
 		ET_Asserts.#assert({ trueValue: expected !== actual, message });
 	}
 
-	static hasData({ value, message }) {
+	static hasData({ value, fullMessage, message }) {
 		if (!["string", "number", "boolean"].includes(typeof value)) {
 			if (!value) {
-				message = `Assertion failed | Validating if data is present | ${message}`;
-				throw new Error(JSON.stringify({ value, message }));
+				if (fullMessage) {
+					throw new Error(fullMessage);
+				} else {
+					message = `Assertion failed | Validating if data is present | ${message}`;
+					throw new Error(JSON.stringify({ value, message }));
+				}
 			}
 		}
 	}

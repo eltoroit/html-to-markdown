@@ -1,7 +1,7 @@
 import Colors from "./colors.js";
 import ET_Asserts from "./etAsserts.js";
 
-export class Utils {
+export default class Utils {
 	static IsDebug;
 
 	static getDateTime({ date, time, timeZone }) {
@@ -83,7 +83,7 @@ export class Utils {
 			const output = newStartOverlaps || newEndOverlaps || encompassesExisting;
 			if (this.isDebug) {
 				Colors.Debug({
-					msg: `Old Event: ${forPrint(event)} | output: ${output} | newStartOverlaps: ${newStartOverlaps} |  newEndOverlaps: ${newEndOverlaps} | encompassesExisting: ${encompassesExisting}`,
+					msg: `Old Event: ${forPrint(event)} | output: ${output} | newStartOverlaps: ${newStartOverlaps} | newEndOverlaps: ${newEndOverlaps} | encompassesExisting: ${encompassesExisting}`,
 				});
 			}
 
@@ -106,21 +106,26 @@ export class Utils {
 	static #reportException({ ex }) {
 		ET_Asserts.hasData({ value: ex, message: "ex" });
 
+		const parseErrorLog = (log) => {
+			const lines = log.split("\n");
+			const firstLine = lines[0]; // First line is the error message
+
+			// Define patterns for exclusion and inclusion
+			const excludePatterns = []; // [/etAsserts\.js/, /colors\.js/];
+			const includePattern = /HerokuPTO\/src/;
+
+			// Filter relevant stack trace lines
+			const filteredLines = lines.slice(1).filter((line) => {
+				return includePattern.test(line) && !excludePatterns.some((pattern) => pattern.test(line));
+			});
+
+			return [firstLine, ...filteredLines];
+		};
+
 		let error = null;
 		if (ex.stack) {
 			error = ex.stack;
-			const lines = error.split("\n").filter((line) => {
-				if (line.trim().startsWith("at")) {
-					let included = true;
-					if (line.includes("HerokuPTO/src/utils.js")) included &= false;
-					if (line.includes("HerokuPTO/src/colors.js")) included &= false;
-					if (line.includes("HerokuPTO/src")) included &= true;
-					return included;
-				} else {
-					return true;
-				}
-				return true;
-			});
+			const lines = parseErrorLog(error);
 			lines.forEach((line) => {
 				Colors.errorDoNotUse({ msg: line });
 			});

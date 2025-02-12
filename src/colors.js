@@ -1,4 +1,4 @@
-import { Utils } from "./utils.js";
+import Utils from "./utils.js";
 import ET_Asserts from "./etAsserts.js";
 
 // Define variables

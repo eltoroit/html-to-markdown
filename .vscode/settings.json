@@ -1,6 +1,11 @@
 {
-  "deno.enable": true,
-  "deno.lint": true,
-  "editor.formatOnSave": true,
-  "[typescript]": { "editor.defaultFormatter": "denoland.vscode-deno" }
+	"deno.enable": true,
+	"deno.lint": true,
+	"editor.formatOnSave": true,
+	"[typescript]": {
+		"editor.defaultFormatter": "denoland.vscode-deno"
+	},
+	"deno.codeLens.test": true,
+	"deno.codeLens.testArgs": ["--allow-all", "--no-check", "--env-file"],
+	"deno.testing.args": ["--allow-all", "--no-check", "--env-file"]
 }

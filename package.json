@@ -5,9 +5,7 @@
 		"heroku": "deno run --allow-env --allow-net --allow-read --allow-write ./main.js",
 		"heroku:logs": "heroku logs --source app --app agentforce-pto --tail",
 		"heroku:debug": "./simulateHeroku.sh",
-		"test:one": "deno test --allow-all ./src/tests/webserver_test.js",
-		"test:debug:one": "deno test --inspect-brk --allow-all ./src/tests/webserver_test.js",
-		"test:all": "deno test --allow-all"
+		"tests": "deno test --allow-all --env-file"
 	},
 	"dependencies": {
 		"path-to-regexp": "^6.3.0"

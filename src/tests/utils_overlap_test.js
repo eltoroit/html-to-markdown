@@ -1,4 +1,4 @@
-import { Utils } from "../utils.js";
+import Utils from "../utils.js";
 import { assert, assertEquals } from "jsr:@std/assert";
 
 let events = [];
