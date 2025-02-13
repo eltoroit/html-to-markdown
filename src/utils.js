@@ -102,27 +102,11 @@ export default class Utils {
 	static #reportException({ ex }) {
 		ET_Asserts.hasData({ value: ex, message: "ex" });
 
-		const parseErrorLog = (log) => {
-			const lines = log.split("\n");
-			const firstLine = lines[0]; // First line is the error message
-
-			// Define patterns for exclusion and inclusion
-			const excludePatterns = []; // [/etAsserts\.js/, /colors\.js/];
-			const includePattern = /HerokuPTO\/src/;
-
-			// Filter relevant stack trace lines
-			const filteredLines = lines.slice(1).filter((line) => {
-				return includePattern.test(line) && !excludePatterns.some((pattern) => pattern.test(line));
-			});
-
-			return [firstLine, ...filteredLines];
-		};
-
 		let error = null;
 		if (ex.stack) {
 			error = ex.stack;
-			const lines = parseErrorLog(error);
-			lines.forEach((line) => {
+			const parsedStack = Utils.getParsedStack({ stack: ex.stack });
+			[parsedStack.firstLine, ...parsedStack.filteredLines].forEach((line) => {
 				Colors.errorDoNotUse({ msg: line });
 			});
 		} else if (error.message) {
@@ -141,5 +125,29 @@ export default class Utils {
 
 		Colors.errorDoNotUse({ msg });
 		return msg;
+	}
+
+	static getParsedStack({ stack }) {
+		if (!stack) {
+			stack = new Error().stack;
+		}
+
+		const lines = stack.split("\n");
+		const firstLine = lines[0]; // First line is the error message
+
+		// Define patterns for exclusion and inclusion
+		const includePattern = /HerokuPTO/;
+		const excludePatterns = [/etAsserts\.js/, /colors\.js/, , /utils\.js/];
+
+		// Filter relevant stack trace lines
+		let filteredLines = lines.slice(1);
+		filteredLines = filteredLines.filter((line) => {
+			return includePattern.test(line);
+		});
+		filteredLines = filteredLines.filter((line) => {
+			return !excludePatterns.some((pattern) => pattern.test(line));
+		});
+
+		return { firstLine, filteredLines };
 	}
 }

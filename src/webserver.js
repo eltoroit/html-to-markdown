@@ -50,7 +50,7 @@ export default class Webserver {
 
 	#serveHTTP({ app, port }) {
 		app.listen({ port });
-		Colors.success({ msg: `Server running on HTTP ${port}: http://localhost:${port}` });
+		Colors.info({ msg: `Server running on HTTP ${port}: http://localhost:${port}` });
 	}
 
 	async #serveHTTPS({ app, port }) {
@@ -69,7 +69,7 @@ export default class Webserver {
 			cert: certs.public,
 			key: certs.private,
 		});
-		Colors.success({ msg: `Server running on HTTPS port ${port}: https://localhost:${port}` });
+		Colors.info({ msg: `Server running on HTTPS port ${port}: https://localhost:${port}` });
 	}
 }
 

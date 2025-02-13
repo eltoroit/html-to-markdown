@@ -1,3 +1,4 @@
+import Utils from "./src/utils.js";
 import Colors from "./src/colors.js";
 import GoogleWS from "./src/googleWS.js";
 import Webserver from "./src/webserver.js";

@@ -96,6 +96,16 @@ export default class Colors {
 			return !["array", "object", "function"].includes(type.toLowerCase());
 		}
 
+		let stack;
+		try {
+			const parsedLines = Utils.getParsedStack({});
+			stack = parsedLines.filteredLines[0];
+			stack = stack.substring(stack.lastIndexOf("/") + 1);
+			stack = stack.replace(/\)/g, "");
+		} catch (ex) {
+			// console.log(new Error().stack);
+		}
+
 		let output;
 		if (isPrimitive(msg)) {
 			output = msg;
@@ -103,6 +113,9 @@ export default class Colors {
 			output = JSON.stringify(msg);
 		}
 		output = `${level.toUpperCase().padEnd(10, "_")}: ${output}`;
+		if (stack) {
+			output += ` (${stack})`;
+		}
 		return output;
 	}
 
@@ -121,6 +134,7 @@ export default class Colors {
 		Colors.warn({ msg: "4. WARN" });
 		Colors.success({ msg: "5. SUCCESS" });
 		Utils.reportError({ error: "6. ERROR" });
+
 		console.log("");
 	}
 
@@ -130,7 +144,9 @@ export default class Colors {
 		const isDebug = envColors === "TRUE";
 		Colors.isDebug = isDebug;
 		console.log(`ENV Colors: ${envColors} => isDebug: ${isDebug}`);
-		Colors.debug({ msg: `Debug Mode: ${isDebug}` });
+		setTimeout(() => {
+			Colors.debug({ msg: `Debug Mode: ${isDebug}` });
+		}, 0);
 	}
 }
 
