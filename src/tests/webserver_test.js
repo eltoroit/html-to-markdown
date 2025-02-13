@@ -9,11 +9,11 @@ let denoTestCounter = 0;
 // Spawn the server in a worker thread
 const serverPath = new URL("../../main.js", import.meta.url).href;
 const worker = new Worker(serverPath, { type: "module", deno: true });
-await new Promise((resolve) => setTimeout(resolve, 2e3));
 
 // Wait for a moment to let the server start (this is a little hacky actually)
+await new Promise((resolve) => setTimeout(resolve, 5e2));
 Colors.warn({ msg: "Waiting..." });
-await new Promise((resolve) => setTimeout(resolve, 3e3));
+await new Promise((resolve) => setTimeout(resolve, 5e2));
 Colors.warn({ msg: "Resume" });
 
 Deno.test("Testing webserver", async (t) => {

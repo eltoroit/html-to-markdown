@@ -267,7 +267,9 @@ export default class GooglePTO {
 
 		let start, end;
 		const oldEvent = await this.getEvent({ id: bodyRequest.ptoRequest.ptoID });
-		if (bodyRequest.ptoRequest.ptoStartDate && bodyRequest.ptoRequest.ptoEndTime) {
+		if (bodyRequest.ptoRequest.ptoStartTime && bodyRequest.ptoRequest.ptoEndTime) {
+			if (isNaN(new Date(bodyRequest.ptoRequest.ptoEndTime))) throw new Error("End time must be a vaid timestamp");
+			if (isNaN(new Date(bodyRequest.ptoRequest.ptoStartTime))) throw new Error("Start time must be a vaid timestamp");
 			start = Utils.getDateTime({ date: bodyRequest.ptoRequest.ptoStartDate, time: bodyRequest.ptoRequest.ptoStartTime, timeZone: bodyRequest.employee.TimeZoneSidKey });
 			end = Utils.getDateTime({ date: bodyRequest.ptoRequest.ptoStartDate, time: bodyRequest.ptoRequest.ptoEndTime, timeZone: bodyRequest.employee.TimeZoneSidKey });
 		} else {
@@ -348,6 +350,8 @@ export default class GooglePTO {
 		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoEndTime, fullMessage: "When requesting less than a day, the times are required. Missing [End time]" });
 		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoStartTime, fullMessage: "When requesting less than a day, the times are required. Missing [Start time]" });
 
+		if (isNaN(new Date(bodyRequest.ptoRequest.ptoEndTime))) throw new Error("End time must be a vaid timestamp");
+		if (isNaN(new Date(bodyRequest.ptoRequest.ptoStartTime))) throw new Error("Start time must be a vaid timestamp");
 		const start = Utils.getDateTime({ date: bodyRequest.ptoRequest.ptoStartDate, time: bodyRequest.ptoRequest.ptoStartTime, timeZone: bodyRequest.employee.TimeZoneSidKey });
 		const end = Utils.getDateTime({ date: bodyRequest.ptoRequest.ptoStartDate, time: bodyRequest.ptoRequest.ptoEndTime, timeZone: bodyRequest.employee.TimeZoneSidKey });
 		const hoursRequested = (new Date(end) - new Date(start)) / (1000 * 60 * 60);

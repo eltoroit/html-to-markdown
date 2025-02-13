@@ -5,7 +5,7 @@
 		"heroku": "deno run --allow-env --allow-net --allow-read --allow-write ./main.js",
 		"heroku:logs": "heroku logs --source app --app agentforce-pto --tail",
 		"heroku:debug": "./simulateHeroku.sh",
-		"tests": "deno test --allow-all --env-file"
+		"unitTests": "./unitTestWithCoverage.sh"
 	},
 	"dependencies": {
 		"path-to-regexp": "^6.3.0"

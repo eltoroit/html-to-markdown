@@ -2,7 +2,7 @@ import Utils from "../utils.js";
 import Colors from "../colors.js";
 import GoogleWS from "../googleWS.js";
 import GooglePTO from "../googlePTO.js";
-import { assert, assertEquals } from "jsr:@std/assert";
+import { assert, assertEquals, assertIsError, assertNotEquals } from "jsr:@std/assert";
 
 Colors.isDebug = false;
 
@@ -77,8 +77,8 @@ Deno.test("Make request for 2 hours", async (t) => {
 	const end = makeTimeForEvent(3);
 	const bodyRequest = bodyRequestPTO({
 		ptoStartDate: new Date().toJSON().split("T")[0],
-		ptoStartTime: start.toJSON().split("T")[1],
-		ptoEndTime: end.toJSON().split("T")[1],
+		ptoStartTime: start.toJSON(),
+		ptoEndTime: end.toJSON(),
 		ptoDays: (end - start) / (1000 * 60 * 60) / 8,
 		ptoEntitled: 10.6,
 	});
@@ -148,8 +148,8 @@ Deno.test("Make request for 2 hours (twice, should fail)", async (t) => {
 	const end = makeTimeForEvent(3);
 	const bodyRequest = bodyRequestPTO({
 		ptoStartDate: new Date().toJSON().split("T")[0],
-		ptoStartTime: start.toJSON().split("T")[1],
-		ptoEndTime: end.toJSON().split("T")[1],
+		ptoStartTime: start.toJSON(),
+		ptoEndTime: end.toJSON(),
 		ptoDays: (end - start) / (1000 * 60 * 60) / 8,
 		ptoEntitled: 10.6,
 	});
@@ -240,84 +240,170 @@ Deno.test("Missing required fields", async (t) => {
 	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-/*
-Deno.test("PTO Requests - Missing Required Fields", async () => {
-  const googlePTO = new GooglePTO({ googleWS: mockGoogleWS });
-  googlePTO.simulation.isActive = true;
-
-  // Missing TimeZoneSidKey
-  await assertRejects(
-    async () => {
-      await googlePTO.requestPTO(createBasicRequestBody({
-        employee: { TimeZoneSidKey: undefined }
-      }));
-    },
-    Error,
-    "You must indicate the employee time zone"
-  );
-
-  // Missing ptoStartDate
-  await assertRejects(
-    async () => {
-      await googlePTO.requestPTO(createBasicRequestBody({
-        ptoRequest: { ptoStartDate: undefined }
-      }));
-    },
-    Error,
-    "You must indicate the [start date] for the PTO request"
-  );
+Deno.test("Make request for 0 days", async (t) => {
+	await resetTestAsync();
+	const bodyRequest = bodyRequestPTO({
+		ptoStartDate: new Date().toJSON().split("T")[0],
+		ptoDays: 0,
+		ptoEntitled: 10.6,
+	});
+	try {
+		await googlePTO.requestPTO(bodyRequest);
+		assert(false, "Expected exception was NOT thrown");
+	} catch (ex) {
+		const isExpectedException = ex.message.includes("Days requested [0] must be greater than 0");
+		if (!isExpectedException) Utils.reportError({ ex });
+		assert(isExpectedException, "Invalid assertion received");
+	}
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("PTO Requests - Partial Day Missing Time", async () => {
-  const googlePTO = new GooglePTO({ googleWS: mockGoogleWS });
-  googlePTO.simulation.isActive = true;
-
-  await assertRejects(
-    async () => {
-      await googlePTO.requestPTO(createBasicRequestBody({
-        ptoRequest: {
-          ptoDays: 0.5,
-          ptoStartTime: "09:00"
-          // Missing ptoEndTime
-        }
-      }));
-    },
-    Error,
-    "When requesting less than a day, the times are required. Missing [End time]"
-  );
+Deno.test("Request More Than 8 Hours In One Day", async (t) => {
+	await resetTestAsync();
+	const start = new Date("2025-02-13T02:00:00.000Z");
+	const end = new Date("2025-02-13T14:00:00.000Z");
+	const bodyRequest = bodyRequestPTO({
+		ptoStartDate: start.toJSON().split("T")[0],
+		ptoStartTime: start.toJSON(),
+		ptoEndTime: end.toJSON(),
+		ptoDays: 0.5,
+		ptoEntitled: 10.6,
+	});
+	try {
+		await googlePTO.requestPTO(bodyRequest);
+		assert(false, "Expected exception was NOT thrown");
+	} catch (ex) {
+		const isExpectedException = ex.message.includes("Requesting more than 8 hours is not allowed, you should request a full day");
+		if (!isExpectedException) Utils.reportError({ ex });
+		assert(isExpectedException, "Invalid assertion received");
+	}
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("PTO Requests - Zero Days", async () => {
-  const googlePTO = new GooglePTO({ googleWS: mockGoogleWS });
-  googlePTO.simulation.isActive = true;
+Deno.test("Update existing PTO request - Full day to partial day", async (t) => {
+	let result;
+	await resetTestAsync();
 
-  await assertRejects(
-    async () => {
-      await googlePTO.requestPTO(createBasicRequestBody({
-        ptoRequest: { ptoDays: 0 }
-      }));
-    },
-    Error,
-    "Days requested [0] must be greater than 0"
-  );
+	// Get all events, there must be 0
+	result = await googlePTO.findEvents({});
+	assertEquals(result.size, 0);
+	assertEquals(result.size, result.items.length);
+
+	// Make a PTO Request for a full day
+	const bodyRequest = bodyRequestPTO({
+		ptoStartDate: new Date().toJSON().split("T")[0],
+		ptoDays: 1,
+		ptoEntitled: 10.6,
+	});
+	result = await googlePTO.requestPTO(bodyRequest);
+	const ptoID = result[0].id;
+	assertEquals(result.length, 1);
+	assertNotEquals(result[0].id, null);
+	assertEquals(result[0].isFullDay, true);
+	assertEquals(result[0].durationHours, 8);
+
+	// Get all events, there must be 1
+	result = await googlePTO.findEvents({});
+	assertEquals(result.size, 1);
+	assertEquals(result.size, result.items.length);
+
+	// Update the PTO Request to a partial day
+	const start = makeTimeForEvent(1);
+	const end = makeTimeForEvent(3);
+	const updateRequest = bodyRequestPTO({
+		ptoStartDate: new Date().toJSON().split("T")[0],
+		ptoStartTime: start.toJSON(),
+		ptoEndTime: end.toJSON(),
+		ptoDays: 0.25,
+		ptoEntitled: 10.6,
+		ptoID,
+	});
+	result = await googlePTO.requestPTO(updateRequest);
+	assertEquals(result.length, 1);
+	assertEquals(result[0].id, ptoID);
+	assertEquals(result[0].isFullDay, false);
+	assertEquals(result[0].durationHours, 2);
+
+	// Get all events, there must be 1
+	result = await googlePTO.findEvents({});
+	assertEquals(result.size, 1);
+	assertEquals(result.size, result.items.length);
+	assertEquals(result.items[0].id, ptoID);
+	assertEquals(result.items[0].isFullDay, false);
+	assertEquals(result.items[0].durationHours, 2);
+
+	// try {
+	// 	await googlePTO.requestPTO(bodyRequest);
+	// 	assert(false, "Expected exception was NOT thrown");
+	// } catch (ex) {
+	// 	const isExpectedException = ex.message.includes("You had already requeed that time off");
+	// 	if (!isExpectedException) Utils.reportError({ ex });
+	// 	assert(isExpectedException, "Invalid assertion received");
+	// }
+
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("PTO Requests - Request More Than 8 Hours In One Day", async () => {
-  const googlePTO = new GooglePTO({ googleWS: mockGoogleWS });
-  googlePTO.simulation.isActive = true;
+Deno.test("Update existing PTO request - Partial day to full day", async (t) => {
+	let result;
+	await resetTestAsync();
 
-  await assertRejects(
-    async () => {
-      await googlePTO.requestPTO(createBasicRequestBody({
-        ptoRequest: {
-          ptoDays: 0.9,
-          ptoStartTime: "08:00",
-          ptoEndTime: "17:00"
-        }
-      }));
-    },
-    Error,
-    "Requesting more than 8 hours is not allowed, you should request a full day"
-  );
+	// Get all events, there must be 0
+	result = await googlePTO.findEvents({});
+	assertEquals(result.size, 0);
+	assertEquals(result.size, result.items.length);
+
+	// Make a PTO Request for a partial day
+	const start = makeTimeForEvent(1);
+	const end = makeTimeForEvent(3);
+	const updateRequest = bodyRequestPTO({
+		ptoStartDate: new Date().toJSON().split("T")[0],
+		ptoStartTime: start.toJSON(),
+		ptoEndTime: end.toJSON(),
+		ptoDays: 0.25,
+		ptoEntitled: 10.6,
+	});
+	result = await googlePTO.requestPTO(updateRequest);
+	const ptoID = result[0].id;
+	assertEquals(result.length, 1);
+	assertNotEquals(result[0].id, null);
+	assertEquals(result[0].isFullDay, false);
+	assertEquals(result[0].durationHours, 2);
+
+	// Get all events, there must be 1
+	result = await googlePTO.findEvents({});
+	assertEquals(result.size, 1);
+	assertEquals(result.size, result.items.length);
+
+	// Update the PTO Request to a full day
+	const bodyRequest = bodyRequestPTO({
+		ptoStartDate: new Date().toJSON().split("T")[0],
+		ptoDays: 1,
+		ptoEntitled: 10.6,
+		ptoID,
+	});
+	result = await googlePTO.requestPTO(bodyRequest);
+	assertEquals(result.length, 1);
+	assertEquals(result[0].id, ptoID);
+	assertEquals(result[0].isFullDay, true);
+	assertEquals(result[0].durationHours, 8);
+
+	// Get all events, there must be 1
+	result = await googlePTO.findEvents({});
+	assertEquals(result.size, 1);
+	assertEquals(result.size, result.items.length);
+	assertEquals(result.items[0].id, ptoID);
+	assertEquals(result.items[0].isFullDay, true);
+	assertEquals(result.items[0].durationHours, 8);
+
+	// try {
+	// 	await googlePTO.requestPTO(bodyRequest);
+	// 	assert(false, "Expected exception was NOT thrown");
+	// } catch (ex) {
+	// 	const isExpectedException = ex.message.includes("You had already requeed that time off");
+	// 	if (!isExpectedException) Utils.reportError({ ex });
+	// 	assert(isExpectedException, "Invalid assertion received");
+	// }
+
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
-*/
