@@ -44,10 +44,8 @@ export default class GooglePTO {
 		if (query?.length > 0) queryParams.q = query;
 		if (timeMin) queryParams.timeMin = new Date(timeMin).toJSON();
 		if (timeMax) queryParams.timeMax = new Date(timeMax).toJSON();
-		let url = `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events`;
-		if (Object.keys(queryParams).length > 0) {
-			url += `?${new URLSearchParams(queryParams).toString()}`;
-		}
+		queryParams.maxResults = 2000;
+		const url = `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events?${new URLSearchParams(queryParams).toString()}`;
 		const events = await this.#etFetch({
 			url,
 			options: { method: "GET" },
@@ -192,29 +190,26 @@ export default class GooglePTO {
 	async requestPTO(bodyRequest) {
 		ET_Asserts.hasData({ value: bodyRequest, message: "bodyRequest" });
 
-		try {
-			if (!this.#defaultCalendar.id) {
-				await this.findCalendar({});
-			}
-
-			let output = [];
-			const isUpdating = bodyRequest.ptoRequest.ptoID !== null;
-			const daysRequested = this.#requestPTO_validateHours({ bodyRequest });
-			const employeeEvents = await this.#requestPTO_findEmployeeEvents({ bodyRequest, year: new Date().getFullYear() });
-			const hoursTaken = this.#requestPTO_calculateHoursTaken({ employeeEvents });
-
-			if (isUpdating) {
-				output = await this.#requestPTO_Update({ bodyRequest, daysRequested, employeeEvents, hoursTaken });
-			} else {
-				output = await this.#requestPTO_Create({ bodyRequest, daysRequested, employeeEvents, hoursTaken });
-			}
-			return output;
-		} catch (ex) {
-			Utils.reportError({ ex });
+		if (!this.#defaultCalendar.id) {
+			await this.findCalendar({});
 		}
+
+		let output = [];
+		const isUpdating = bodyRequest.ptoRequest.ptoID !== null;
+		const daysRequested = await this.#requestPTO_validateHours({ bodyRequest });
+		const employeeEvents = await this.#requestPTO_findEmployeeEvents({ bodyRequest, year: new Date().getFullYear() });
+		const hoursTaken = await this.#requestPTO_calculateHoursTaken({ employeeEvents });
+
+		if (isUpdating) {
+			output = await this.#requestPTO_Update({ bodyRequest, output, daysRequested, employeeEvents, hoursTaken });
+		} else {
+			output = await this.#requestPTO_Create({ bodyRequest, output, daysRequested, employeeEvents, hoursTaken });
+		}
+		return output;
 	}
 
-	async #requestPTO_Update({ bodyRequest, employeeEvents, hoursTaken }) {
+	async #requestPTO_Update({ bodyRequest, output, employeeEvents, hoursTaken }) {
+		ET_Asserts.hasData({ value: output, message: "output" });
 		ET_Asserts.hasData({ value: hoursTaken, message: "hoursTaken" });
 		ET_Asserts.hasData({ value: bodyRequest, message: "bodyRequest" });
 		ET_Asserts.hasData({ value: employeeEvents, message: "employeeEvents" });
@@ -230,27 +225,29 @@ export default class GooglePTO {
 		}
 		const hoursRequested = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
 		if (hoursRequested > this.#businessHours.day) throw new Error("Requesting more than 8 hours is not allowed, you should request a full day");
-		this.#requestPTO_validateEntitlementPTO({ bodyRequest, oldEvent, hoursRequested, hoursTaken });
+		await this.#requestPTO_validateEntitlementPTO({ bodyRequest, oldEvent, hoursRequested, hoursTaken });
 		// Remove old event because maybe the overlap is with the old event.
 		employeeEvents.items = employeeEvents.items.filter((event) => event.id !== bodyRequest.ptoRequest.ptoID);
-		this.#requestPTO_validateOverlap({ start, end, employeeEvents });
+		await this.#requestPTO_validateOverlap({ start, end, employeeEvents });
 		const newEvent = await this.updateEvent({ id: bodyRequest.ptoRequest.ptoID, start, end });
 		output.push(newEvent);
 	}
 
-	async #requestPTO_Create({ bodyRequest, daysRequested, hoursTaken, employeeEvents }) {
+	async #requestPTO_Create({ bodyRequest, output, daysRequested, hoursTaken, employeeEvents }) {
+		ET_Asserts.hasData({ value: output, message: "output" });
 		ET_Asserts.hasData({ value: hoursTaken, message: "hoursTaken" });
 		ET_Asserts.hasData({ value: daysRequested, message: "daysRequested" });
 
 		const oldEvent = {};
 		if (daysRequested >= 1) {
-			this.#requestPTO_CreateDays({ bodyRequest, oldEvent, daysRequested, hoursTaken });
+			await this.#requestPTO_CreateDays({ bodyRequest, output, oldEvent, daysRequested, hoursTaken });
 		} else {
-			this.#requestPTO_CreateHours({ bodyRequest, oldEvent, daysRequested, hoursTaken, employeeEvents });
+			await this.#requestPTO_CreateHours({ bodyRequest, output, oldEvent, daysRequested, hoursTaken, employeeEvents });
 		}
 	}
 
-	async #requestPTO_CreateDays({ bodyRequest, oldEvent, daysRequested, hoursTaken }) {
+	async #requestPTO_CreateDays({ bodyRequest, output, oldEvent, daysRequested, hoursTaken }) {
+		ET_Asserts.hasData({ value: output, message: "output" });
 		ET_Asserts.hasData({ value: hoursTaken, message: "hoursTaken" });
 		ET_Asserts.hasData({ value: bodyRequest, message: "bodyRequest" });
 		ET_Asserts.hasData({ value: daysRequested, message: "daysRequested" });
@@ -265,11 +262,11 @@ export default class GooglePTO {
 			dttmStart.setDate(dttmStart.getDate() + i);
 			dttmEnd.setDate(dttmEnd.getDate() + i);
 			dates.push({ start: dttmStart, end: dttmEnd });
-			this.#requestPTO_validateOverlap({ start, end, employeeEvents });
+			await this.#requestPTO_validateOverlap({ start, end, employeeEvents });
 		}
 		// Days
 		const hoursRequested = ((new Date(baseEnd) - new Date(baseStart)) / (1000 * 60 * 60)) * daysRequested;
-		this.#requestPTO_validateEntitlementPTO({ bodyRequest, oldEvent, hoursRequested, hoursTaken });
+		await this.#requestPTO_validateEntitlementPTO({ bodyRequest, oldEvent, hoursRequested, hoursTaken });
 		const employeeName = bodyRequest.employee.Name;
 		const employeeEmail = bodyRequest.employee.Email;
 		const newEventsPromise = dates.map((date) => {
@@ -282,7 +279,8 @@ export default class GooglePTO {
 		await Promise.allSettled(newEventsPromise);
 	}
 
-	async #requestPTO_CreateHours({ bodyRequest, oldEvent, hoursTaken, employeeEvents }) {
+	async #requestPTO_CreateHours({ bodyRequest, output, oldEvent, hoursTaken, employeeEvents }) {
+		ET_Asserts.hasData({ value: output, message: "output" });
 		ET_Asserts.hasData({ value: oldEvent, message: "oldEvent" });
 		ET_Asserts.hasData({ value: hoursTaken, message: "hoursTaken" });
 		ET_Asserts.hasData({ value: bodyRequest, message: "bodyRequest" });
@@ -292,8 +290,8 @@ export default class GooglePTO {
 		const end = Utils.getDateTime({ date: bodyRequest.ptoRequest.ptoStartDate, time: bodyRequest.ptoRequest.ptoEndTime, timeZone: bodyRequest.employee.TimeZoneSidKey });
 		const hoursRequested = (new Date(end) - new Date(start)) / (1000 * 60 * 60);
 		if (hoursRequested > this.#businessHours.day) throw new Error("Requesting more than 8 hours is not allowed, you should request a full day");
-		this.#requestPTO_validateEntitlementPTO({ bodyRequest, oldEvent, hoursRequested, hoursTaken });
-		this.#requestPTO_validateOverlap({ start, end, employeeEvents });
+		await this.#requestPTO_validateEntitlementPTO({ bodyRequest, oldEvent, hoursRequested, hoursTaken });
+		await this.#requestPTO_validateOverlap({ start, end, employeeEvents });
 		const employeeName = bodyRequest.employee.Name;
 		const employeeEmail = bodyRequest.employee.Email;
 		const newEvent = await this.createEvent({ start, end, employeeName, employeeEmail });
