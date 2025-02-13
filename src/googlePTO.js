@@ -4,7 +4,6 @@ import ET_Asserts from "./etAsserts.js";
 
 export default class GooglePTO {
 	#googleWS;
-	#isDebug = false;
 	#defaultCalendar = {};
 	#sendUpdates = "none"; // Send emails to attendees
 	#businessHours = {
@@ -14,8 +13,7 @@ export default class GooglePTO {
 	};
 	#itemFields = ["id", "summary", "description", "start", "end", "attendees"];
 
-	constructor({ isDebug, googleWS }) {
-		this.#isDebug = isDebug;
+	constructor({ googleWS }) {
 		this.#googleWS = googleWS;
 	}
 
@@ -63,7 +61,7 @@ export default class GooglePTO {
 			items,
 		};
 		Colors.fine({ msg: `${output.size} events found` });
-		if (this.#isDebug) Colors.debug({ msg: output });
+		Colors.debug({ msg: output });
 		return output;
 	}
 
@@ -85,7 +83,7 @@ export default class GooglePTO {
 		});
 		Colors.fine({ msg: `Found event with ID: ${id}` });
 
-		if (this.#isDebug) Colors.debug({ msg: output });
+		Colors.debug({ msg: output });
 		return output;
 	}
 
@@ -122,7 +120,7 @@ export default class GooglePTO {
 				body: JSON.stringify(event),
 			},
 		});
-		if (this.#isDebug) Colors.debug({ msg: response });
+		Colors.debug({ msg: response });
 		const output = this.#getSimpleEvent({ event: response });
 		return output;
 	}
@@ -147,7 +145,7 @@ export default class GooglePTO {
 					body: JSON.stringify(event),
 				},
 			});
-			if (this.#isDebug) Colors.debug({ msg: response });
+			Colors.debug({ msg: response });
 			const output = this.#getSimpleEvent({ event: response });
 			return output;
 		} else {
@@ -170,7 +168,7 @@ export default class GooglePTO {
 				},
 				expectedStatus: 204,
 			});
-			Colors.debug({ msg: `Event with ID: ${id} deleted` });
+			Colors.info({ msg: `Event with ID: ${id} deleted` });
 			return `Event deleted: ${new Date().toJSON()}`;
 		} else {
 			throw new Error(`Event with ID [${id}] was NOT found to be deleted`);
@@ -392,14 +390,14 @@ export default class GooglePTO {
 		await makeRequest();
 		if (response.status === 401) {
 			// Try to login with refresh token
-			Colors.debug({ msg: "Invalid session, need to log it to Google using Refresh Token" });
+			Colors.info({ msg: "Invalid session, need to log it to Google using Refresh Token" });
 			await this.#googleWS.loginWithRefreshToken();
 			await makeRequest();
 		}
 		if (response.status === expectedStatus) {
 			if (response.body) {
 				response = await response.json();
-				if (this.#isDebug) Colors.debug({ msg: response });
+				Colors.debug({ msg: response });
 				return response;
 			} else {
 				response.body?.cancel();

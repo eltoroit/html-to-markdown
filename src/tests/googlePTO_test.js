@@ -7,83 +7,28 @@ import { assert, assertEquals } from "jsr:@std/assert";
 Colors.tests();
 
 const moreRoutes = [];
-const isDebug = true;
 const googleWS = new GoogleWS({ moreRoutes });
-const googlePTO = new GooglePTO({ isDebug, googleWS });
+const googlePTO = new GooglePTO({ googleWS });
 
+//#region Basic Google Events
 // Finding Calendar
 Deno.test({
 	name: "Finding Calendar",
-	async fn(_t) {
+	async fn(t) {
 		const body = await googlePTO.findCalendar();
 		assert(body.includes("Calendar found"), "Invalid output received");
+		Colors.success({ msg: `Test [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
 
-// Finding Events without parameters
+// Clear Calendar
 Deno.test({
-	name: "Finding Events without parameters",
-	async fn(_t) {
-		// async findEvents({ query, timeMin, timeMax }) {
-		const body = await googlePTO.findEvents({});
-		assert(body.size > 0, "Invalid output received");
-		assertEquals(body.size, body.items.length, "Invalid output received");
-	},
-	sanitizeResources: false,
-});
-
-// Finding Events without parameters
-Deno.test({
-	name: "Finding Events without parameters",
-	async fn(_t) {
-		// async findEvents({ query, timeMin, timeMax }) {
-		const body = await googlePTO.findEvents({ query: "DO NOT FIND EVENTS" });
-		assertEquals(body.size, 0, "Invalid output received");
-		assertEquals(body.size, body.items.length, "Invalid output received");
-	},
-	sanitizeResources: false,
-});
-
-// Finding Events past years
-Deno.test({
-	name: "Finding Events past years",
-	async fn(_t) {
-		// async findEvents({ query, timeMin, timeMax }) {
-		const year = 1999;
-		const timeZone = "America/Toronto";
-		const timeMin = Utils.getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone });
-		const timeMax = Utils.getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone });
-		const body = await googlePTO.findEvents({ timeMin, timeMax });
-		assertEquals(body.size, 0, "Invalid output received");
-		assertEquals(body.size, body.items.length, "Invalid output received");
-	},
-	sanitizeResources: false,
-});
-
-// Finding Events current year
-Deno.test({
-	name: "Finding Events current year",
-	async fn(_t) {
-		// async findEvents({ query, timeMin, timeMax }) {
-		const timeZone = "America/Toronto";
-		const year = new Date().getFullYear();
-		const timeMin = Utils.getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone });
-		const timeMax = Utils.getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone });
-		const body = await googlePTO.findEvents({ timeMin, timeMax });
-		assert(body.size > 0, "Invalid output received");
-		assertEquals(body.size, body.items.length, "Invalid output received");
-	},
-	sanitizeResources: false,
-});
-
-// Finding Event by id
-Deno.test({
-	name: "Finding Event by id",
-	async fn(_t) {
-		const events = await googlePTO.findEvents({});
-		const event = await googlePTO.getEvent({ id: events.items[0].id });
-		assertEquals(events.items[0].id, event.id, "Invalid output received");
+	name: "Clear Calendar",
+	async fn(t) {
+		const output = await googlePTO.clearCalendar();
+		assert(output.includes("Calendar Cleared"), "Invalid output received");
+		Colors.success({ msg: `Test [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -91,7 +36,7 @@ Deno.test({
 // Create event
 Deno.test({
 	name: "Create event",
-	async fn(_t) {
+	async fn(t) {
 		const start = makeTimeForEvent(0);
 		const end = makeTimeForEvent(1);
 		const eventData = {
@@ -102,6 +47,7 @@ Deno.test({
 		};
 		const event = await googlePTO.createEvent(eventData);
 		assert(event.id, "Invalid output received");
+		Colors.success({ msg: `Test [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -109,7 +55,7 @@ Deno.test({
 // Update event
 Deno.test({
 	name: "Update event",
-	async fn(_t) {
+	async fn(t) {
 		const DTTMs = {
 			create: { start: makeTimeForEvent(0), end: makeTimeForEvent(1) },
 			update: { start: makeTimeForEvent(1), end: makeTimeForEvent(2) },
@@ -130,6 +76,7 @@ Deno.test({
 		assertEquals(newEvent.start, DTTMs.update.start, "Invalid output received");
 		assertEquals(newEvent.end, DTTMs.update.end, "Invalid output received");
 		assertEquals(oldEvent.id, newEvent.id, "Invalid output received");
+		Colors.success({ msg: `Test [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -137,7 +84,7 @@ Deno.test({
 // Delete event
 Deno.test({
 	name: "Delete event",
-	async fn(_t) {
+	async fn(t) {
 		const eventData = {
 			start: makeTimeForEvent(0),
 			end: makeTimeForEvent(1),
@@ -148,16 +95,79 @@ Deno.test({
 		const outputDelete = await googlePTO.deleteEvent({ id: oldEvent.id });
 		// await new Promise((resolve) => setTimeout(resolve, 30e3));
 		// const outputRetrieve = await googlePTO.getEvent({ id: oldEvent.id });
+		Colors.success({ msg: `Test [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
 
-// Clear Calendar
+// Finding Events without parameters
 Deno.test({
-	name: "Clear Calendar",
-	async fn(_t) {
-		const output = await googlePTO.clearCalendar();
-		assert(output.includes("Calendar Cleared"), "Invalid output received");
+	name: "Finding Events without parameters",
+	async fn(t) {
+		// async findEvents({ query, timeMin, timeMax }) {
+		const body = await googlePTO.findEvents({});
+		assert(body.size > 0, "Invalid output received");
+		assertEquals(body.size, body.items.length, "Invalid output received");
+		Colors.success({ msg: `Test [${t.name}] Completed` });
+	},
+	sanitizeResources: false,
+});
+
+// Finding Events without parameters
+Deno.test({
+	name: "Finding Events without parameters",
+	async fn(t) {
+		// async findEvents({ query, timeMin, timeMax }) {
+		const body = await googlePTO.findEvents({ query: "DO NOT FIND EVENTS" });
+		assertEquals(body.size, 0, "Invalid output received");
+		assertEquals(body.size, body.items.length, "Invalid output received");
+		Colors.success({ msg: `Test [${t.name}] Completed` });
+	},
+	sanitizeResources: false,
+});
+
+// Finding Events past years
+Deno.test({
+	name: "Finding Events past years",
+	async fn(t) {
+		// async findEvents({ query, timeMin, timeMax }) {
+		const year = 1999;
+		const timeZone = "America/Toronto";
+		const timeMin = Utils.getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone });
+		const timeMax = Utils.getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone });
+		const body = await googlePTO.findEvents({ timeMin, timeMax });
+		assertEquals(body.size, 0, "Invalid output received");
+		assertEquals(body.size, body.items.length, "Invalid output received");
+		Colors.success({ msg: `Test [${t.name}] Completed` });
+	},
+	sanitizeResources: false,
+});
+
+// Finding Events current year
+Deno.test({
+	name: "Finding Events current year",
+	async fn(t) {
+		// async findEvents({ query, timeMin, timeMax }) {
+		const timeZone = "America/Toronto";
+		const year = new Date().getFullYear();
+		const timeMin = Utils.getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone });
+		const timeMax = Utils.getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone });
+		const body = await googlePTO.findEvents({ timeMin, timeMax });
+		assert(body.size > 0, "Invalid output received");
+		assertEquals(body.size, body.items.length, "Invalid output received");
+		Colors.success({ msg: `Test [${t.name}] Completed` });
+	},
+	sanitizeResources: false,
+});
+
+// Finding Event by id
+Deno.test({
+	name: "Finding Event by id",
+	async fn(t) {
+		const events = await googlePTO.findEvents({});
+		const event = await googlePTO.getEvent({ id: events.items[0].id });
+		assertEquals(events.items[0].id, event.id, "Invalid output received");
+		Colors.success({ msg: `Test [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -170,7 +180,9 @@ const makeTimeForEvent = (offset) => {
 	dttm.setHours(dttm.getHours() + 1 + offset);
 	return dttm;
 };
+//#endregion
 
+// #region PTO Requests
 function bodyRequestPTO() {
 	return {
 		ptoRequest: {
@@ -196,3 +208,5 @@ function bodyRequestPTO() {
 		},
 	};
 }
+
+//#endregion

@@ -1,7 +1,8 @@
 import Utils from "../utils.js";
+import Colors from "../colors.js";
 import { assertEquals } from "jsr:@std/assert";
 
-Utils.IsDebug = false;
+let denoTestCounter = 0;
 const date = "2025-02-10";
 const testValues = [
 	{
@@ -18,20 +19,22 @@ const testValues = [
 testValues.forEach((testValue) => {
 	const timeZone = testValue.timeZone;
 	testValue.times.forEach((time) => {
-		Deno.test(`timeZone: ${timeZone} | Date: ${date} | Time: ${time}`, () => {
+		Deno.test(`timeZone: ${timeZone} | Date: ${date} | Time: ${time}`, (t) => {
 			const timestamp = Utils.getDateTime({ date, time, timeZone });
 			assertEquals(timestamp, testValue.expected);
+			Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 		});
 	});
 });
 
 // More tests
-Deno.test("Date ignored if present in time", () => {
+Deno.test("Date ignored if present in time", (t) => {
 	const timeZone = "America/Los_Angeles",
 		date = "2025-02-10",
 		time = "2025-02-14T14:00:00.000Z",
 		expected = new Date(time);
 	const timestamp = Utils.getDateTime({ date, time, timeZone });
-	if (Utils.IsDebug) Colors.debug({ msg: `ISO: ${timestamp.toISOString()} | ${timestamp} | timeZone: ${timeZone} | Date: ${date} | Time: ${time}` });
+	Colors.debug({ msg: `ISO: ${timestamp.toISOString()} | ${timestamp} | timeZone: ${timeZone} | Date: ${date} | Time: ${time}` });
 	assertEquals(timestamp, expected);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });

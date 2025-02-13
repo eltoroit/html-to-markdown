@@ -35,11 +35,28 @@ const colorBgCyan = "\x1b[46m";
 const colorBgWhite = "\x1b[47m";
 
 export default class Colors {
+	static IsDebug;
+
+	static {
+		// Is Debug?
+		const isDebug = Deno.env.get("IS_DEBUG") === "TRUE";
+		Colors.IsDebug = isDebug;
+		Colors.debug({ msg: `Debug Mode: ${isDebug}` });
+	}
+
 	static clearScreen() {
 		console.log(clearScreenCode);
 	}
 
 	//#region COLORS
+	static debug({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
+
+		if (this.IsDebug) {
+			console.log(colorBgBlack + colorBright + colorFgGray + this.#msgToText({ level: "DEBUG", msg }) + colorReset);
+		}
+	}
+
 	static info({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
@@ -61,12 +78,6 @@ export default class Colors {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
 		console.log(colorBgBlack + colorBright + colorFgYellow + this.#msgToText({ level: "WARN", msg }) + colorReset);
-	}
-
-	static debug({ msg }) {
-		ET_Asserts.hasData({ value: msg, message: "msg" });
-
-		console.log(colorBgBlack + colorBright + colorFgGray + this.#msgToText({ level: "DEBUG", msg }) + colorReset);
 	}
 
 	static errorDoNotUse({ msg }) {
@@ -106,21 +117,17 @@ export default class Colors {
 	static tests() {
 		console.log(clearScreenCode);
 
-		Colors.debug({ msg: { text: "debug" } });
-		Colors.debug({ msg: ["debug"] });
-		console.log("");
+		if (this.IsDebug) {
+			Colors.debug({ msg: "0. DEBUG" });
+		} else {
+			console.log(`Skipping debug because isDebug: ${this.IsDebug}`);
+		}
 		Colors.info({ msg: "1. INFO" });
 		Colors.fine({ msg: "2. FINE" });
 		Colors.finest({ msg: "4. FINEST" });
 		Colors.warn({ msg: "3. WARN" });
+		Colors.success({ msg: "4. SUCCESS" });
+		Utils.reportError({ error: "5. ERROR" });
 		console.log("");
-		Colors.debug({ msg: "DEBUG" });
-		Colors.success({ msg: "SUCCESS" });
-		Utils.reportError({ error: "ERROR" });
-		try {
-			throw new Error("Testing Exceptions");
-		} catch (ex) {
-			Utils.reportError({ ex });
-		}
 	}
 }

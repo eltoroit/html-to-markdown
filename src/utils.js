@@ -2,8 +2,6 @@ import Colors from "./colors.js";
 import ET_Asserts from "./etAsserts.js";
 
 export default class Utils {
-	static IsDebug;
-
 	static getDateTime({ date, time, timeZone }) {
 		// Handle different time formats
 		const parseTime = (timeStr) => {
@@ -65,8 +63,8 @@ export default class Utils {
 			return JSON.stringify(tmp);
 		};
 
-		if (this.isDebug) Colors.Debug({ msg: "---" });
-		if (this.isDebug) Colors.Debug({ msg: `New Event: ${forPrint(newEvent)}` });
+		Colors.Debug({ msg: "---" });
+		Colors.Debug({ msg: `New Event: ${forPrint(newEvent)}` });
 		if (newEvent.start > newEvent.end) {
 			throw new Error("Event start time can't be later than event end time");
 		}
@@ -81,11 +79,9 @@ export default class Utils {
 			const encompassesExisting = newEvent.start <= event.start && newEvent.end >= event.end;
 
 			const output = newStartOverlaps || newEndOverlaps || encompassesExisting;
-			if (this.isDebug) {
-				Colors.Debug({
-					msg: `Old Event: ${forPrint(event)} | output: ${output} | newStartOverlaps: ${newStartOverlaps} | newEndOverlaps: ${newEndOverlaps} | encompassesExisting: ${encompassesExisting}`,
-				});
-			}
+			Colors.Debug({
+				msg: `Old Event: ${forPrint(event)} | output: ${output} | newStartOverlaps: ${newStartOverlaps} | newEndOverlaps: ${newEndOverlaps} | encompassesExisting: ${encompassesExisting}`,
+			});
 
 			return output;
 		});

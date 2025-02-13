@@ -6,16 +6,11 @@ export default class GoogleWS {
 	#googlePTO;
 	loginResult;
 	#callbackServer;
-	#isDebug = false;
+	#saveSecrets = false;
 
 	constructor({ moreRoutes }) {
-		const isDebug = Deno.env.get("IS_DEBUG") === "TRUE";
-		this.#isDebug = isDebug;
-		Utils.IsDebug = this.#isDebug;
-		Colors.debug({ msg: `Debug Mode: ${isDebug}` });
-		this.#googlePTO = new GooglePTO({ isDebug, googleWS: this });
-
 		// Set Variables
+		this.#googlePTO = new GooglePTO({ googleWS: this });
 		this.#callbackServer = Deno.env.get("CALLBACK_SERVER");
 
 		// Login
@@ -201,7 +196,7 @@ export default class GoogleWS {
 					queryParams.login_hint = Deno.env.get("GMAIL");
 				}
 				queryParams = new URLSearchParams(queryParams);
-				if (this.#isDebug) Colors.debug({ msg: `Callback Server: ${this.#callbackServer}` });
+				Colors.debug({ msg: `Callback Server: ${this.#callbackServer}` });
 
 				const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
 				ctx.response.redirect(url);
@@ -220,7 +215,7 @@ export default class GoogleWS {
 
 	#callback_GET({ router }) {
 		const saveLoginResults = async () => {
-			if (this.#isDebug) {
+			if (this.#saveSecrets) {
 				await Deno.mkdir("secrets", { recursive: true });
 				await Deno.writeTextFile(`secrets/googleSecrets_${new Date().getTime() / 1000}.json`, JSON.stringify(this.loginResult, null, 4));
 				if (this.loginResult.refresh_token) {
@@ -233,10 +228,8 @@ export default class GoogleWS {
 		};
 		router.get("/callback", async (ctx) => {
 			const queryParams = ctx.request.url.searchParams;
-			if (this.#isDebug) {
-				for (const [key, value] of queryParams) {
-					Colors.debug({ msg: `${key}: ${value}` });
-				}
+			for (const [key, value] of queryParams) {
+				Colors.debug({ msg: `${key}: ${value}` });
 			}
 			Colors.debug({ msg: "Swapping code for Access Token" });
 			const response = await fetch("https://oauth2.googleapis.com/token", {
@@ -252,10 +245,10 @@ export default class GoogleWS {
 					redirect_uri: `${this.#callbackServer}/callback`,
 				}),
 			});
-			if (this.#isDebug) Colors.debug({ msg: `Callback Server: ${this.#callbackServer}` });
+			Colors.debug({ msg: `Callback Server: ${this.#callbackServer}` });
 			this.loginResult = await response.json();
 			Colors.fine({ msg: "Login Callback" });
-			if (this.#isDebug) Colors.debug({ msg: this.loginResult });
+			Colors.debug({ msg: this.loginResult });
 			await saveLoginResults();
 
 			// Check scopes
@@ -315,7 +308,7 @@ export default class GoogleWS {
 					queryParams.login_hint = Deno.env.get("GMAIL");
 				}
 				queryParams = new URLSearchParams(queryParams);
-				if (this.#isDebug) Colors.debug({ msg: `Callback Server: ${this.#callbackServer}` });
+				Colors.debug({ msg: `Callback Server: ${this.#callbackServer}` });
 				const url = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
 				ctx.response.redirect(url);
 			} catch (ex) {
@@ -357,7 +350,7 @@ export default class GoogleWS {
 				}),
 			});
 			this.loginResult = await response.json();
-			if (this.#isDebug) Colors.debug({ msg: this.loginResult });
+			Colors.debug({ msg: this.loginResult });
 			if (this.loginResult.access_token) {
 				Colors.fine({ msg: "Logged in with Refresh Token" });
 				return `Logged in with refresh token completed: ${new Date().toJSON()}`;
