@@ -26,7 +26,7 @@ export default class GooglePTO {
 		calendars = calendars.items.filter((calendar) => calendar.summary === calendarName);
 		if (calendars.length === 1) {
 			this.#defaultCalendar = calendars[0];
-			Colors.fine({ msg: `Calendar: ${this.#defaultCalendar.id}` });
+			Colors.success({ msg: `Calendar: ${this.#defaultCalendar.id}` });
 			return `Calendar found: ${new Date().toJSON()}`;
 		} else {
 			throw new Error(`Could not find calendar named [${calendarName}]`);
@@ -60,7 +60,7 @@ export default class GooglePTO {
 			size: items.length,
 			items,
 		};
-		Colors.fine({ msg: `${output.size} events found` });
+		Colors.success({ msg: `${output.size} events found` });
 		Colors.debug({ msg: output });
 		return output;
 	}
@@ -81,8 +81,7 @@ export default class GooglePTO {
 		this.#itemFields.forEach((field) => {
 			output[field] = event[field];
 		});
-		Colors.fine({ msg: `Found event with ID: ${id}` });
-
+		Colors.success({ msg: `Found event with ID: ${id}` });
 		Colors.debug({ msg: output });
 		return output;
 	}
@@ -120,7 +119,6 @@ export default class GooglePTO {
 				body: JSON.stringify(event),
 			},
 		});
-		Colors.debug({ msg: response });
 		const output = this.#getSimpleEvent({ event: response });
 		return output;
 	}
@@ -145,7 +143,6 @@ export default class GooglePTO {
 					body: JSON.stringify(event),
 				},
 			});
-			Colors.debug({ msg: response });
 			const output = this.#getSimpleEvent({ event: response });
 			return output;
 		} else {
@@ -168,7 +165,7 @@ export default class GooglePTO {
 				},
 				expectedStatus: 204,
 			});
-			Colors.info({ msg: `Event with ID: ${id} deleted` });
+			Colors.success({ msg: `Event with ID: ${id} deleted` });
 			return `Event deleted: ${new Date().toJSON()}`;
 		} else {
 			throw new Error(`Event with ID [${id}] was NOT found to be deleted`);
@@ -386,11 +383,11 @@ export default class GooglePTO {
 				throw ex;
 			}
 		};
-		Colors.fine({ msg: `Fetching [${options.method}]: ${url}` });
+		Colors.info({ msg: `Fetching [${options.method}]: ${url}` });
 		await makeRequest();
 		if (response.status === 401) {
 			// Try to login with refresh token
-			Colors.info({ msg: "Invalid session, need to log it to Google using Refresh Token" });
+			Colors.warn({ msg: "Invalid session, need to log it to Google using Refresh Token" });
 			await this.#googleWS.loginWithRefreshToken();
 			await makeRequest();
 		}

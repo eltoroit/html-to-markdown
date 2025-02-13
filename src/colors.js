@@ -1,7 +1,7 @@
 import Utils from "./utils.js";
 import ET_Asserts from "./etAsserts.js";
 
-// Define variables
+//#region Color Variables)
 const clearScreenCode = "\x1B[2J";
 
 // Color Modes
@@ -33,16 +33,10 @@ const colorBgBlue = "\x1b[44m";
 const colorBgMagenta = "\x1b[45m";
 const colorBgCyan = "\x1b[46m";
 const colorBgWhite = "\x1b[47m";
+//#endregion
 
 export default class Colors {
-	static IsDebug;
-
-	static {
-		// Is Debug?
-		const isDebug = Deno.env.get("IS_DEBUG") === "TRUE";
-		Colors.IsDebug = isDebug;
-		Colors.debug({ msg: `Debug Mode: ${isDebug}` });
-	}
+	static isDebug = false;
 
 	static clearScreen() {
 		console.log(clearScreenCode);
@@ -52,26 +46,25 @@ export default class Colors {
 	static debug({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		if (this.IsDebug) {
+		if (this.isDebug) {
 			console.log(colorBgBlack + colorBright + colorFgGray + this.#msgToText({ level: "DEBUG", msg }) + colorReset);
 		}
-	}
-
-	static info({ msg }) {
-		ET_Asserts.hasData({ value: msg, message: "msg" });
-
-		console.log(colorBgBlack + colorBright + colorFgWhite + this.#msgToText({ level: "INFO", msg }) + colorReset);
-	}
-
-	static fine({ msg }) {
-		ET_Asserts.hasData({ value: msg, message: "msg" });
-		console.log(colorBgBlack + colorBright + colorFgCyan + this.#msgToText({ level: "FINE", msg }) + colorReset);
 	}
 
 	static finest({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		console.log(colorBgBlack + colorBright + colorFgMagenta + this.#msgToText({ level: "FINEST", msg }) + colorReset);
+		console.log(colorBgBlack + colorFgCyan + this.#msgToText({ level: "FINEST", msg }) + colorReset);
+	}
+
+	static fine({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
+		console.log(colorBgBlack + colorFgMagenta + this.#msgToText({ level: "FINE", msg }) + colorReset);
+	}
+
+	static info({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
+		console.log(colorBgBlack + colorBright + colorFgWhite + this.#msgToText({ level: "INFO", msg }) + colorReset);
 	}
 
 	static warn({ msg }) {
@@ -80,18 +73,17 @@ export default class Colors {
 		console.log(colorBgBlack + colorBright + colorFgYellow + this.#msgToText({ level: "WARN", msg }) + colorReset);
 	}
 
-	static errorDoNotUse({ msg }) {
-		ET_Asserts.hasData({ value: msg, message: "msg" });
-
-		console.log(colorBgBlack + colorBright + colorFgRed + this.#msgToText({ level: "ERROR", msg }) + colorReset);
-	}
-
 	static success({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
 		console.log(colorBgBlack + colorBright + colorFgGreen + this.#msgToText({ level: "SUCCESS", msg }) + colorReset);
 	}
 
+	static errorDoNotUse({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
+
+		console.log(colorBgBlack + colorBright + colorFgRed + this.#msgToText({ level: "ERROR", msg }) + colorReset);
+	}
 	//#endregion
 
 	static #msgToText({ level, msg }) {
@@ -117,17 +109,29 @@ export default class Colors {
 	static tests() {
 		console.log(clearScreenCode);
 
-		if (this.IsDebug) {
-			Colors.debug({ msg: "0. DEBUG" });
-		} else {
-			console.log(`Skipping debug because isDebug: ${this.IsDebug}`);
+		if (!Colors.isDebug) {
+			Colors.isDebug = true;
+			Colors.debug({ msg: `0. DEBUG (Skipping debug because isDebug is false)` });
+			Colors.isDebug = false;
 		}
-		Colors.info({ msg: "1. INFO" });
+		Colors.debug({ msg: "0. DEBUG" });
+		Colors.finest({ msg: "1. FINEST" });
 		Colors.fine({ msg: "2. FINE" });
-		Colors.finest({ msg: "4. FINEST" });
-		Colors.warn({ msg: "3. WARN" });
-		Colors.success({ msg: "4. SUCCESS" });
-		Utils.reportError({ error: "5. ERROR" });
+		Colors.info({ msg: "3. INFO" });
+		Colors.warn({ msg: "4. WARN" });
+		Colors.success({ msg: "5. SUCCESS" });
+		Utils.reportError({ error: "6. ERROR" });
 		console.log("");
 	}
+
+	static initialize() {
+		// Is Debug?
+		const envColors = Deno.env.get("IS_DEBUG");
+		const isDebug = envColors === "TRUE";
+		Colors.isDebug = isDebug;
+		console.log(`ENV Colors: ${envColors} => isDebug: ${isDebug}`);
+		Colors.debug({ msg: `Debug Mode: ${isDebug}` });
+	}
 }
+
+Colors.initialize();

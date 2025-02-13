@@ -32,7 +32,7 @@ export default class GoogleWS {
 	//#region CALENDAR ROUTER
 	#findCalendar_GET({ router }) {
 		router.get(`/findCalendar`, async (ctx) => {
-			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
 			try {
 				const body = await this.#googlePTO.findCalendar();
 				ctx.response.status = "200";
@@ -45,7 +45,7 @@ export default class GoogleWS {
 
 	#findEvents_GET({ router }) {
 		router.get("/findEvents", async (ctx) => {
-			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
 			const queryParams = ctx.request.url.searchParams;
 			const query = queryParams.get("query");
 			try {
@@ -61,7 +61,7 @@ export default class GoogleWS {
 
 	#event_GET({ router }) {
 		router.get("/event", async (ctx) => {
-			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
 			try {
@@ -78,8 +78,8 @@ export default class GoogleWS {
 	#event_POST({ router }) {
 		router.post("/event", async (ctx) => {
 			const bodyRequest = await ctx.request.body.json();
-			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
-			Colors.finest({ msg: bodyRequest });
+			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			Colors.info({ msg: bodyRequest });
 			try {
 				const bodyResponse = await this.#googlePTO.createEvent(bodyRequest);
 				ctx.response.type = "json";
@@ -96,8 +96,8 @@ export default class GoogleWS {
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
 			const bodyRequest = await ctx.request.body.json();
-			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
-			Colors.finest({ msg: bodyRequest });
+			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			Colors.info({ msg: bodyRequest });
 			try {
 				const bodyResponse = await this.#googlePTO.updateEvent({ id, ...bodyRequest });
 				ctx.response.type = "json";
@@ -111,7 +111,7 @@ export default class GoogleWS {
 
 	#event_DELETE({ router }) {
 		router.delete("/event", async (ctx) => {
-			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
 			const queryParams = ctx.request.url.searchParams;
 			const id = queryParams.get("id");
 			try {
@@ -127,7 +127,7 @@ export default class GoogleWS {
 
 	#clearCalendar_GET({ router }) {
 		router.get("/clearCalendar", async (ctx) => {
-			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
 			try {
 				const body = await this.#googlePTO.clearCalendar();
 				ctx.response.type = "json";
@@ -142,8 +142,8 @@ export default class GoogleWS {
 	#requestPTO_POST({ router }) {
 		router.post("/requestPTO", async (ctx) => {
 			const bodyRequest = await ctx.request.body.json();
-			Colors.finest({ msg: `${ctx.request.method} ${ctx.request.url}` });
-			Colors.finest({ msg: bodyRequest });
+			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			Colors.info({ msg: bodyRequest });
 			try {
 				const bodyResponse = await this.#googlePTO.requestPTO(bodyRequest);
 				ctx.response.type = "json";
@@ -231,7 +231,7 @@ export default class GoogleWS {
 			for (const [key, value] of queryParams) {
 				Colors.debug({ msg: `${key}: ${value}` });
 			}
-			Colors.debug({ msg: "Swapping code for Access Token" });
+			Colors.info({ msg: "Swapping code for Access Token" });
 			const response = await fetch("https://oauth2.googleapis.com/token", {
 				method: "POST",
 				headers: {
@@ -336,7 +336,7 @@ export default class GoogleWS {
 		};
 
 		const login = async (refresh_token) => {
-			Colors.debug({ msg: "Requesting Access Token using Refresh Token" });
+			Colors.info({ msg: "Requesting Access Token using Refresh Token" });
 			const response = await fetch("https://oauth2.googleapis.com/token", {
 				method: "POST",
 				headers: {
@@ -352,7 +352,7 @@ export default class GoogleWS {
 			this.loginResult = await response.json();
 			Colors.debug({ msg: this.loginResult });
 			if (this.loginResult.access_token) {
-				Colors.fine({ msg: "Logged in with Refresh Token" });
+				Colors.info({ msg: "Logged in with Refresh Token" });
 				return `Logged in with refresh token completed: ${new Date().toJSON()}`;
 			} else {
 				throw new Error("Unable to get Access Token using Refresh Token");

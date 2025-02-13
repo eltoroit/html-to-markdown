@@ -19,7 +19,7 @@ Deno.test({
 		assert(body.includes("Calendar found"), "Invalid output received");
 		Colors.success({ msg: `Test [${t.name}] Completed` });
 	},
-	sanitizeResources: false,
+	// sanitizeResources: false,
 });
 
 // Clear Calendar
@@ -208,5 +208,17 @@ function bodyRequestPTO() {
 		},
 	};
 }
+
+// Finding Event by id
+Deno.test({
+	name: "Finding Event by id",
+	async fn(t) {
+		const events = await googlePTO.findEvents({});
+		const event = await googlePTO.getEvent({ id: events.items[0].id });
+		assertEquals(events.items[0].id, event.id, "Invalid output received");
+		Colors.success({ msg: `Test [${t.name}] Completed` });
+	},
+	sanitizeResources: false,
+});
 
 //#endregion

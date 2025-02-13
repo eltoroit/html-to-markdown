@@ -1,5 +1,3 @@
-import Colors from "./colors.js";
-
 export default class ET_Asserts {
 	static equals({ expected, actual, message }) {
 		message = `Assertion failed | Expecting EQUALS | Expected: [${expected}] | Actual: [${actual}] | ${message}`;
