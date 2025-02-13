@@ -235,6 +235,7 @@ export default class GooglePTO {
 		ET_Asserts.hasData({ value: bodyRequest, message: "bodyRequest" });
 		ET_Asserts.hasData({ value: bodyRequest.employee, message: "bodyRequest.employee" });
 		ET_Asserts.hasData({ value: bodyRequest.ptoRequest, message: "bodyRequest.ptoRequest" });
+		ET_Asserts.hasData({ value: bodyRequest.employee.TimeZoneSidKey, fullMessage: "You must indicate the employee time zone" });
 		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.employeeID, fullMessage: "You must indicate the [employeeID] for the PTO request" });
 		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoStartDate, fullMessage: "You must indicate the [start date] for the PTO request" });
 		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoDays, fullMessage: "You must indicate the [duration (ptoDays)] for the PTO request" });
@@ -245,7 +246,7 @@ export default class GooglePTO {
 		}
 
 		const output = [];
-		const isUpdating = bodyRequest.ptoRequest.ptoID !== null;
+		const isUpdating = !!bodyRequest.ptoRequest.ptoID;
 		const daysRequested = await this.#requestPTO_validateHours({ bodyRequest });
 		const employeeEvents = await this.#requestPTO_findEmployeeEvents({ bodyRequest, year: new Date().getFullYear() });
 		const hoursTaken = await this.#requestPTO_calculateHoursTaken({ employeeEvents });
@@ -290,17 +291,19 @@ export default class GooglePTO {
 
 		const oldEvent = {};
 		if (daysRequested >= 1) {
-			await this.#requestPTO_CreateDays({ bodyRequest, output, oldEvent, daysRequested, hoursTaken });
+			await this.#requestPTO_CreateDays({ bodyRequest, output, oldEvent, daysRequested, hoursTaken, employeeEvents });
 		} else {
 			await this.#requestPTO_CreateHours({ bodyRequest, output, oldEvent, daysRequested, hoursTaken, employeeEvents });
 		}
 	}
 
-	async #requestPTO_CreateDays({ bodyRequest, output, oldEvent, daysRequested, hoursTaken }) {
+	async #requestPTO_CreateDays({ bodyRequest, output, oldEvent, daysRequested, hoursTaken, employeeEvents }) {
 		ET_Asserts.hasData({ value: output, message: "output" });
+		ET_Asserts.hasData({ value: oldEvent, message: "oldEvent" });
 		ET_Asserts.hasData({ value: hoursTaken, message: "hoursTaken" });
 		ET_Asserts.hasData({ value: bodyRequest, message: "bodyRequest" });
 		ET_Asserts.hasData({ value: daysRequested, message: "daysRequested" });
+		ET_Asserts.hasData({ value: employeeEvents, message: "employeeEvents" });
 
 		// Calculate all the dates and times
 		const dates = [];
@@ -312,7 +315,7 @@ export default class GooglePTO {
 			dttmStart.setDate(dttmStart.getDate() + i);
 			dttmEnd.setDate(dttmEnd.getDate() + i);
 			dates.push({ start: dttmStart, end: dttmEnd });
-			await this.#requestPTO_validateOverlap({ start, end, employeeEvents });
+			await this.#requestPTO_validateOverlap({ start: dttmStart, end: dttmEnd, employeeEvents });
 		}
 		// Days
 		const hoursRequested = ((new Date(baseEnd) - new Date(baseStart)) / (1000 * 60 * 60)) * daysRequested;
@@ -342,6 +345,8 @@ export default class GooglePTO {
 		ET_Asserts.hasData({ value: hoursTaken, message: "hoursTaken" });
 		ET_Asserts.hasData({ value: bodyRequest, message: "bodyRequest" });
 		ET_Asserts.hasData({ value: employeeEvents, message: "employeeEvents" });
+		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoEndTime, fullMessage: "When requesting less than a day, the times are required. Missing [End time]" });
+		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoStartDate, fullMessage: "When requesting less than a day, the times are required. Missing [Start time]" });
 
 		const start = Utils.getDateTime({ date: bodyRequest.ptoRequest.ptoStartDate, time: bodyRequest.ptoRequest.ptoStartTime, timeZone: bodyRequest.employee.TimeZoneSidKey });
 		const end = Utils.getDateTime({ date: bodyRequest.ptoRequest.ptoStartDate, time: bodyRequest.ptoRequest.ptoEndTime, timeZone: bodyRequest.employee.TimeZoneSidKey });

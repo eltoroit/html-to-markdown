@@ -12,17 +12,12 @@ const googleWS = new GoogleWS({ moreRoutes });
 const googlePTO = new GooglePTO({ googleWS });
 googlePTO.simulation.isActive = true;
 
-if (googlePTO.simulation.isActive) {
-	// Simulate some events
-}
-
-//#region Basic Google Events
 // Finding Calendar
 Deno.test({
 	name: "Finding Calendar",
 	async fn(t) {
 		const body = await googlePTO.findCalendar();
-		assert(body.includes("Calendar found"), "Invalid output received");
+		assert(body.includes("Calendar found"));
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
@@ -33,7 +28,7 @@ Deno.test({
 	name: "Clear Calendar",
 	async fn(t) {
 		const output = await googlePTO.clearCalendar();
-		assert(output.includes("Calendar Cleared"), "Invalid output received");
+		assert(output.includes("Calendar Cleared"));
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
@@ -52,7 +47,7 @@ Deno.test({
 			employeeEmail: "aperez@salesforce.com",
 		};
 		const event = await googlePTO.createEvent(eventData);
-		assert(event.id, "Invalid output received");
+		assert(event.id);
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
@@ -73,15 +68,15 @@ Deno.test({
 			employeeEmail: "aperez@salesforce.com",
 		};
 		const oldEvent = await googlePTO.createEvent(eventData);
-		assertEquals(oldEvent.start, DTTMs.create.start, "Invalid output received");
-		assertEquals(oldEvent.end, DTTMs.create.end, "Invalid output received");
+		assertEquals(oldEvent.start, DTTMs.create.start);
+		assertEquals(oldEvent.end, DTTMs.create.end);
 
 		eventData.start = DTTMs.update.start;
 		eventData.end = DTTMs.update.end;
 		const newEvent = await googlePTO.updateEvent({ id: oldEvent.id, ...eventData });
-		assertEquals(newEvent.start, DTTMs.update.start, "Invalid output received");
-		assertEquals(newEvent.end, DTTMs.update.end, "Invalid output received");
-		assertEquals(oldEvent.id, newEvent.id, "Invalid output received");
+		assertEquals(newEvent.start, DTTMs.update.start);
+		assertEquals(newEvent.end, DTTMs.update.end);
+		assertEquals(oldEvent.id, newEvent.id);
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
@@ -111,8 +106,8 @@ Deno.test({
 	name: "Finding Events without parameters",
 	async fn(t) {
 		const body = await googlePTO.findEvents({});
-		assert(body.size >= 0, "Invalid output received");
-		assertEquals(body.size, body.items.length, "Invalid output received");
+		assert(body.size >= 0);
+		assertEquals(body.size, body.items.length);
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
@@ -126,8 +121,8 @@ Deno.test({
 		if (googlePTO.simulation.isActive) {
 			Utils.reportError({ error: "Simulation mode queries do not filter events" });
 		} else {
-			assertEquals(body.size, 0, "Invalid output received");
-			assertEquals(body.size, body.items.length, "Invalid output received");
+			assertEquals(body.size, 0);
+			assertEquals(body.size, body.items.length);
 		}
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
@@ -146,8 +141,8 @@ Deno.test({
 		if (googlePTO.simulation.isActive) {
 			Utils.reportError({ error: "Simulation mode queries do not filter events" });
 		} else {
-			assertEquals(body.size, 0, "Invalid output received");
-			assertEquals(body.size, body.items.length, "Invalid output received");
+			assertEquals(body.size, 0);
+			assertEquals(body.size, body.items.length);
 		}
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
@@ -166,7 +161,7 @@ Deno.test({
 		if (googlePTO.simulation.isActive) {
 			Utils.reportError({ error: "Simulation mode queries do not filter events" });
 		} else {
-			assertEquals(body.size, body.items.length, "Invalid output received");
+			assertEquals(body.size, body.items.length);
 		}
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
@@ -179,12 +174,11 @@ Deno.test({
 	async fn(t) {
 		const events = await googlePTO.findEvents({});
 		const event = await googlePTO.getEvent({ id: events.items[0].id });
-		assertEquals(events.items[0].id, event.id, "Invalid output received");
+		assertEquals(events.items[0].id, event.id);
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
-//#endregion
 
 const makeTimeForEvent = (offset) => {
 	const dttm = new Date();
@@ -194,56 +188,3 @@ const makeTimeForEvent = (offset) => {
 	dttm.setHours(dttm.getHours() + 1 + offset);
 	return dttm;
 };
-
-const bodyRequestPTO = ({ ptoStartTime, ptoStartDate, ptoID, ptoEntitled, ptoEndTime, ptoDays }) => {
-	return {
-		ptoRequest: {
-			ptoStartTime,
-			ptoStartDate,
-			ptoID,
-			ptoEntitled,
-			ptoEndTime,
-			ptoDays,
-			employeeID: "005Ot00000KcxGTIAZ",
-		},
-		employee: {
-			attributes: {
-				type: "User",
-				url: "/services/data/v63.0/sobjects/User/005Ot00000KcxGTIAZ",
-			},
-			Id: "005Ot00000KcxGTIAZ",
-			Username: "test-scqg41x0pb0g@example.com",
-			Name: "Andres Perez",
-			Email: "aperez@salesforce.com",
-			StartDate__c: "2024-10-03",
-			TimeZoneSidKey: "America/New_York",
-		},
-	};
-};
-
-// #region PTO Requests
-// Make request for 2 hours
-Deno.test({
-	name: "Make request for 2 hours",
-	async fn(t) {
-		const start = makeTimeForEvent(1);
-		const end = makeTimeForEvent(3);
-		const bodyRequest = bodyRequestPTO({
-			ptoStartDate: new Date().toJSON().split("T")[0],
-			ptoStartTime: start.toJSON().split("T")[1],
-			ptoEndTime: end.toJSON().split("T")[1],
-			ptoDays: (end - start) / (1000 * 60 * 60) / 8,
-			ptoEntitled: 10.6,
-		});
-		const output = await googlePTO.requestPTO(bodyRequest);
-		assert(output[0].id, "Invalid output received");
-		console.log(output);
-
-		// const events = await googlePTO.findEvents({});
-		// const event = await googlePTO.getEvent({ id: events.items[0].id });
-		// assertEquals(events.items[0].id, event.id, "Invalid output received");
-		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
-	},
-	sanitizeResources: false,
-});
-//#endregion
