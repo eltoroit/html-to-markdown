@@ -5,26 +5,34 @@ import ET_Asserts from "./etAsserts.js";
 export default class GooglePTO {
 	#googleWS;
 	#defaultCalendar = {};
-	simulatedEvent = {};
-	isSimulationMode = false;
 	#sendUpdates = "none"; // Send emails to attendees
+	simulation = {
+		isActive: false,
+		events: {},
+	};
 	#businessHours = {
 		day: 8, // 8 hours in a business day (Not 24!)
 		start: "09:00",
 		end: "17:00",
 	};
-	#itemFields = ["id", "summary", "description", "start", "end", "attendees"];
 
 	constructor({ googleWS }) {
 		this.#googleWS = googleWS;
 	}
 
 	async findCalendar() {
+		Colors.info({ msg: "START: findCalendar" });
 		const calendarName = "Agentforce PTO";
-		let calendars = await this.#etFetch({
-			url: "https://www.googleapis.com/calendar/v3/users/me/calendarList",
-			options: { method: "GET" },
-		});
+		let calendars;
+		if (this.simulation.isActive) {
+			Utils.reportError({ error: "Simulating [findCalendar]. In simulation mode the Calendar API is not being called" });
+			calendars = { items: [{ id: "[Calendar Simulation]", summary: calendarName }] };
+		} else {
+			calendars = await this.#etFetch({
+				url: "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+				options: { method: "GET" },
+			});
+		}
 		calendars = calendars.items.filter((calendar) => calendar.summary === calendarName);
 		if (calendars.length === 1) {
 			this.#defaultCalendar = calendars[0];
@@ -36,6 +44,7 @@ export default class GooglePTO {
 	}
 
 	async findEvents({ query, timeMin, timeMax }) {
+		Colors.info({ msg: "START: findEvents" });
 		if (!this.#defaultCalendar.id) {
 			await this.findCalendar();
 		}
@@ -45,11 +54,18 @@ export default class GooglePTO {
 		if (timeMin) queryParams.timeMin = new Date(timeMin).toJSON();
 		if (timeMax) queryParams.timeMax = new Date(timeMax).toJSON();
 		queryParams.maxResults = 2000;
-		const url = `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events?${new URLSearchParams(queryParams).toString()}`;
-		const events = await this.#etFetch({
-			url,
-			options: { method: "GET" },
-		});
+
+		let events;
+		if (this.simulation.isActive) {
+			Utils.reportError({ error: "Simulating [findEvents]. In simulation mode the Calendar API is not being called" });
+			events = { items: Object.keys(this.simulation.events).map((key) => this.simulation.events[key]) };
+		} else {
+			const url = `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events?${new URLSearchParams(queryParams).toString()}`;
+			events = await this.#etFetch({
+				url,
+				options: { method: "GET" },
+			});
+		}
 
 		// Parse list
 		const items = events.items.map((event) => {
@@ -68,6 +84,7 @@ export default class GooglePTO {
 	}
 
 	async getEvent({ id }) {
+		Colors.info({ msg: "START: getEvent" });
 		ET_Asserts.hasData({ value: id, fullMessage: `Finding event by ID without an ID is not allowed!` });
 
 		if (!this.#defaultCalendar.id) {
@@ -75,26 +92,25 @@ export default class GooglePTO {
 		}
 
 		let event;
-		if (!this.isSimulationMode) {
+		if (this.simulation.isActive) {
+			event = { ...this.simulation.events[id] };
+		} else {
+			Utils.reportError({ error: "Simulating [getEvent]. In simulation mode the Calendar API is not being called" });
 			event = await this.#etFetch({
 				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}`,
 				options: { method: "GET" },
 			});
-		} else {
-			event = { ...this.simulatedEvent };
 		}
 
 		// Parse list
-		const output = {};
-		this.#itemFields.forEach((field) => {
-			output[field] = event[field];
-		});
+		const output = this.#getSimpleEvent({ event });
 		Colors.success({ msg: `Found event with ID: ${id}` });
 		Colors.debug({ msg: output });
 		return output;
 	}
 
 	async createEvent({ start, end, employeeName, employeeEmail }) {
+		Colors.info({ msg: "START: createEvent" });
 		ET_Asserts.hasData({ value: start, fullMessage: `Creating an event, requires a [start] timestamp` });
 		ET_Asserts.hasData({ value: end, fullMessage: `Creating an event, requires a [end] timestamp` });
 		ET_Asserts.hasData({ value: employeeName, fullMessage: `Creating an event, requires a [employeeName]` });
@@ -120,11 +136,11 @@ export default class GooglePTO {
 		};
 
 		let output;
-		if (this.isSimulationMode) {
-			Utils.reportError({ error: "In simulation mode the Calendar API is not being called" });
-			let simulatedEvent = { ...event, id: "SIMULATED", creator: { email: "SIMULATED" } };
-			simulatedEvent = this.#getSimpleEvent({ event: simulatedEvent });
-			output = { simulation: "Create", ...simulatedEvent };
+		if (this.simulation.isActive) {
+			Utils.reportError({ error: "Simulating [createEvent]. In simulation mode the Calendar API is not being called" });
+			const id = new Date().toJSON();
+			this.simulation.events[id] = { ...event, id, status: "confirmed", creator: { email: "SIMULATED" } };
+			output = this.#getSimpleEvent({ event: this.simulation.events[id] });
 		} else {
 			const response = await this.#etFetch({
 				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events?sendUpdates=${this.#sendUpdates}`,
@@ -134,12 +150,13 @@ export default class GooglePTO {
 					body: JSON.stringify(event),
 				},
 			});
-			const output = this.#getSimpleEvent({ event: response });
+			output = this.#getSimpleEvent({ event: response });
 		}
 		return output;
 	}
 
 	async updateEvent({ id, start, end }) {
+		Colors.info({ msg: "START: updateEvent" });
 		ET_Asserts.hasData({ value: id, fullMessage: `Updating an event without an ID is not allowed!` });
 		ET_Asserts.hasData({ value: start, fullMessage: `Updating an event requires a [start] timestamp` });
 		ET_Asserts.hasData({ value: end, fullMessage: `Updating an event requires a [end] timestamp` });
@@ -152,11 +169,11 @@ export default class GooglePTO {
 			event.start.dateTime = new Date(start).toJSON();
 			event.end.dateTime = new Date(end).toJSON();
 			let output;
-			if (this.isSimulationMode) {
-				Utils.reportError({ error: "In simulation mode the Calendar API is not being called" });
-				let simulatedEvent = { ...event, id: "SIMULATED", creator: { email: "SIMULATED" } };
-				simulatedEvent = this.#getSimpleEvent({ event: simulatedEvent });
-				output = { id: "SIMULATED", simulation: "Update", ...simulatedEvent };
+			if (this.simulation.isActive) {
+				Utils.reportError({ error: "Simulating [updateEvent]. In simulation mode the Calendar API is not being called" });
+				const simulatedEvent = { ...event };
+				this.simulation.events[id] = simulatedEvent;
+				output = this.#getSimpleEvent({ event: simulatedEvent });
 			} else {
 				const response = await this.#etFetch({
 					url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}?sendUpdates=${this.#sendUpdates}`,
@@ -175,6 +192,7 @@ export default class GooglePTO {
 	}
 
 	async deleteEvent({ id }) {
+		Colors.info({ msg: "START: deleteEvent" });
 		ET_Asserts.hasData({ value: id, fullMessage: `Deleting an event without an ID is not allowed!` });
 
 		if (!this.#defaultCalendar.id) {
@@ -182,13 +200,17 @@ export default class GooglePTO {
 		}
 		const event = await this.getEvent({ id });
 		if (event) {
-			await this.#etFetch({
-				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}`,
-				options: {
-					method: "DELETE",
-				},
-				expectedStatus: 204,
-			});
+			if (this.simulation.isActive) {
+				delete this.simulation.events[id];
+			} else {
+				await this.#etFetch({
+					url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}`,
+					options: {
+						method: "DELETE",
+					},
+					expectedStatus: 204,
+				});
+			}
 			Colors.success({ msg: `Event with ID: ${id} deleted` });
 			return `Event deleted: ${new Date().toJSON()}`;
 		} else {
@@ -197,6 +219,7 @@ export default class GooglePTO {
 	}
 
 	async clearCalendar() {
+		Colors.info({ msg: "START: clearCalendar" });
 		const events = await this.findEvents({});
 		const deleteEventsPromise = events.items.map((event) => {
 			// Do not await because they are run in parallel
@@ -208,6 +231,7 @@ export default class GooglePTO {
 
 	// Sample bodyRequest is located here: /src/tests/googlePTO_test.js (bodyRequestPTO)
 	async requestPTO(bodyRequest) {
+		Colors.info({ msg: "START: requestPTO" });
 		ET_Asserts.hasData({ value: bodyRequest, message: "bodyRequest" });
 		ET_Asserts.hasData({ value: bodyRequest.employee, message: "bodyRequest.employee" });
 		ET_Asserts.hasData({ value: bodyRequest.ptoRequest, message: "bodyRequest.ptoRequest" });
@@ -421,7 +445,11 @@ export default class GooglePTO {
 				throw ex;
 			}
 		};
-		Colors.info({ msg: `Fetching [${options.method}]: ${url}` });
+		Colors.fine({ msg: `Fetching [${options.method}]: ${url}` });
+		if (this.simulation.isActive) {
+			Utils.reportError({ error: "Simulating [#etFetch]. In simulation mode the Calendar API is not being called" });
+			throw new Error("Why am I being called???");
+		}
 		await makeRequest();
 		if (response.status === 401) {
 			// Try to login with refresh token
@@ -429,7 +457,7 @@ export default class GooglePTO {
 			await this.#googleWS.loginWithRefreshToken();
 			await makeRequest();
 		}
-		if (this.isSimulationMode || response.status === expectedStatus) {
+		if (response.status === expectedStatus) {
 			if (response.body) {
 				response = await response.json();
 				Colors.debug({ msg: response });

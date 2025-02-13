@@ -10,7 +10,11 @@ const moreRoutes = [];
 let denoTestCounter = 0;
 const googleWS = new GoogleWS({ moreRoutes });
 const googlePTO = new GooglePTO({ googleWS });
-googlePTO.isSimulationMode = true;
+googlePTO.simulation.isActive = true;
+
+if (googlePTO.simulation.isActive) {
+	// Simulate some events
+}
 
 //#region Basic Google Events
 // Finding Calendar
@@ -69,9 +73,6 @@ Deno.test({
 			employeeEmail: "aperez@salesforce.com",
 		};
 		const oldEvent = await googlePTO.createEvent(eventData);
-		if (googlePTO.isSimulationMode) {
-			googlePTO.simulatedEvent = { ...oldEvent };
-		}
 		assertEquals(oldEvent.start, DTTMs.create.start, "Invalid output received");
 		assertEquals(oldEvent.end, DTTMs.create.end, "Invalid output received");
 
@@ -109,7 +110,6 @@ Deno.test({
 Deno.test({
 	name: "Finding Events without parameters",
 	async fn(t) {
-		// async findEvents({ query, timeMin, timeMax }) {
 		const body = await googlePTO.findEvents({});
 		assert(body.size >= 0, "Invalid output received");
 		assertEquals(body.size, body.items.length, "Invalid output received");
@@ -118,14 +118,17 @@ Deno.test({
 	sanitizeResources: false,
 });
 
-// Finding Events without parameters
+// Finding Events with invalid parameters
 Deno.test({
-	name: "Finding Events without parameters",
+	name: "Finding Events with invalid parameters",
 	async fn(t) {
-		// async findEvents({ query, timeMin, timeMax }) {
 		const body = await googlePTO.findEvents({ query: "DO NOT FIND EVENTS" });
-		assertEquals(body.size, 0, "Invalid output received");
-		assertEquals(body.size, body.items.length, "Invalid output received");
+		if (googlePTO.simulation.isActive) {
+			Utils.reportError({ error: "Simulation mode queries do not filter events" });
+		} else {
+			assertEquals(body.size, 0, "Invalid output received");
+			assertEquals(body.size, body.items.length, "Invalid output received");
+		}
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
@@ -135,14 +138,17 @@ Deno.test({
 Deno.test({
 	name: "Finding Events past years",
 	async fn(t) {
-		// async findEvents({ query, timeMin, timeMax }) {
 		const year = 1999;
 		const timeZone = "America/Toronto";
 		const timeMin = Utils.getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone });
 		const timeMax = Utils.getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone });
 		const body = await googlePTO.findEvents({ timeMin, timeMax });
-		assertEquals(body.size, 0, "Invalid output received");
-		assertEquals(body.size, body.items.length, "Invalid output received");
+		if (googlePTO.simulation.isActive) {
+			Utils.reportError({ error: "Simulation mode queries do not filter events" });
+		} else {
+			assertEquals(body.size, 0, "Invalid output received");
+			assertEquals(body.size, body.items.length, "Invalid output received");
+		}
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
@@ -152,39 +158,26 @@ Deno.test({
 Deno.test({
 	name: "Finding Events current year",
 	async fn(t) {
-		// async findEvents({ query, timeMin, timeMax }) {
 		const timeZone = "America/Toronto";
 		const year = new Date().getFullYear();
 		const timeMin = Utils.getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone });
 		const timeMax = Utils.getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone });
 		const body = await googlePTO.findEvents({ timeMin, timeMax });
-		if (!googlePTO.isSimulationMode) {
-			assert(body.size > 0, "Invalid output received");
+		if (googlePTO.simulation.isActive) {
+			Utils.reportError({ error: "Simulation mode queries do not filter events" });
+		} else {
+			assertEquals(body.size, body.items.length, "Invalid output received");
 		}
-		assertEquals(body.size, body.items.length, "Invalid output received");
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
 
-// Finding Event by id
+// Retrieving Event by id
 Deno.test({
-	name: "Finding Event by id",
+	name: "Retrieving Event by id",
 	async fn(t) {
-		let events;
-		if (googlePTO.isSimulationMode) {
-			const eventData = {
-				start: makeTimeForEvent(0),
-				end: makeTimeForEvent(1),
-				employeeName: "Andres Perez",
-				employeeEmail: "aperez@salesforce.com",
-			};
-			const oldEvent = await googlePTO.createEvent(eventData);
-			googlePTO.simulatedEvent = { ...oldEvent };
-			events = { items: [oldEvent] };
-		} else {
-			events = await googlePTO.findEvents({});
-		}
+		const events = await googlePTO.findEvents({});
 		const event = await googlePTO.getEvent({ id: events.items[0].id });
 		assertEquals(events.items[0].id, event.id, "Invalid output received");
 		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
@@ -242,9 +235,9 @@ Deno.test({
 			ptoDays: (end - start) / (1000 * 60 * 60) / 8,
 			ptoEntitled: 10.6,
 		});
-		// const output = await googlePTO.requestPTO(bodyRequest);
-		// assert(output[0].id, "Invalid output received");
-		// console.log(output);
+		const output = await googlePTO.requestPTO(bodyRequest);
+		assert(output[0].id, "Invalid output received");
+		console.log(output);
 
 		// const events = await googlePTO.findEvents({});
 		// const event = await googlePTO.getEvent({ id: events.items[0].id });
