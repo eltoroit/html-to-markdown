@@ -346,7 +346,7 @@ export default class GooglePTO {
 		ET_Asserts.hasData({ value: bodyRequest, message: "bodyRequest" });
 		ET_Asserts.hasData({ value: employeeEvents, message: "employeeEvents" });
 		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoEndTime, fullMessage: "When requesting less than a day, the times are required. Missing [End time]" });
-		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoStartDate, fullMessage: "When requesting less than a day, the times are required. Missing [Start time]" });
+		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoStartTime, fullMessage: "When requesting less than a day, the times are required. Missing [Start time]" });
 
 		const start = Utils.getDateTime({ date: bodyRequest.ptoRequest.ptoStartDate, time: bodyRequest.ptoRequest.ptoStartTime, timeZone: bodyRequest.employee.TimeZoneSidKey });
 		const end = Utils.getDateTime({ date: bodyRequest.ptoRequest.ptoStartDate, time: bodyRequest.ptoRequest.ptoEndTime, timeZone: bodyRequest.employee.TimeZoneSidKey });

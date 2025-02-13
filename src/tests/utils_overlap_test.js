@@ -252,10 +252,12 @@ Deno.test("Event #EXCEPTION_01 - Inverted timestamps", (t) => {
 		title: "TEST EVENT",
 	};
 	try {
-		const added = addEvent(newEvent);
-		assert(false, "Excetion not thrown");
+		addEvent(newEvent);
+		assert(false, "Expected exception was NOT thrown");
 	} catch (ex) {
-		assertEquals(ex.message, "Event start time can't be later than event end time");
+		const isExpectedException = ex.message.includes("Event start time can't be later than event end time");
+		if (!isExpectedException) Utils.reportError({ ex });
+		assert(isExpectedException, "Invalid assertion received");
 	}
 	events = events.filter((event) => event.title !== newEvent.title);
 	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
@@ -270,9 +272,11 @@ Deno.test("Event #EXCEPTION_02 - Same timestamps", (t) => {
 	};
 	try {
 		addEvent(newEvent);
-		assert(false, "Excetion not thrown");
+		assert(false, "Expected exception was NOT thrown");
 	} catch (ex) {
-		assertEquals(ex.message, "Event start time can't be the same as the event end time");
+		const isExpectedException = ex.message.includes("Event start time can't be the same as the event end time");
+		if (!isExpectedException) Utils.reportError({ ex });
+		assert(isExpectedException, "Invalid assertion received");
 	}
 	events = events.filter((event) => event.title !== newEvent.title);
 	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
