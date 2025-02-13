@@ -2,7 +2,11 @@ import Colors from "../colors.js";
 import ET_Asserts from "../etAsserts.js";
 import { assert, assertEquals } from "jsr:@std/assert";
 
+Colors.isDebug = true;
+Colors.tests();
+
 let denoTestCounter = 0;
+
 Deno.test("Assertions Pass", (t) => {
 	// Pass
 	ET_Asserts.equals({ expected: 1, actual: 1, message: "Pass" });

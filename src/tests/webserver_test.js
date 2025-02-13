@@ -1,6 +1,9 @@
 import Colors from "../colors.js";
 import { assert, assertEquals } from "jsr:@std/assert";
 
+Colors.isDebug = true;
+Colors.tests();
+
 let denoTestCounter = 0;
 
 // Spawn the server in a worker thread

@@ -2,6 +2,9 @@ import Utils from "../utils.js";
 import Colors from "../colors.js";
 import { assert, assertEquals } from "jsr:@std/assert";
 
+Colors.isDebug = true;
+Colors.tests();
+
 let events = [];
 let denoTestCounter = 0;
 

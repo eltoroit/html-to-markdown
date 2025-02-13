@@ -63,8 +63,8 @@ export default class Utils {
 			return JSON.stringify(tmp);
 		};
 
-		Colors.Debug({ msg: "---" });
-		Colors.Debug({ msg: `New Event: ${forPrint(newEvent)}` });
+		Colors.debug({ msg: "---" });
+		Colors.debug({ msg: `New Event: ${forPrint(newEvent)}` });
 		if (newEvent.start > newEvent.end) {
 			throw new Error("Event start time can't be later than event end time");
 		}
@@ -79,7 +79,7 @@ export default class Utils {
 			const encompassesExisting = newEvent.start <= event.start && newEvent.end >= event.end;
 
 			const output = newStartOverlaps || newEndOverlaps || encompassesExisting;
-			Colors.Debug({
+			Colors.debug({
 				msg: `Old Event: ${forPrint(event)} | output: ${output} | newStartOverlaps: ${newStartOverlaps} | newEndOverlaps: ${newEndOverlaps} | encompassesExisting: ${encompassesExisting}`,
 			});
 
@@ -88,7 +88,7 @@ export default class Utils {
 	}
 
 	static reportError({ ctx, error, ex }) {
-		// ET_Asserts.hasData({ value: ctx, message: "ctx" });
+		ET_Asserts.hasData({ value: error || ex, message: "Either error or ex must be provided" });
 
 		let msg;
 		if (error) msg = Utils.#reportError({ msg: error });

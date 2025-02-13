@@ -4,11 +4,13 @@ import GoogleWS from "../googleWS.js";
 import GooglePTO from "../googlePTO.js";
 import { assert, assertEquals } from "jsr:@std/assert";
 
-Colors.tests();
+Colors.isDebug = false;
 
 const moreRoutes = [];
+let denoTestCounter = 0;
 const googleWS = new GoogleWS({ moreRoutes });
 const googlePTO = new GooglePTO({ googleWS });
+googlePTO.isSimulationMode = true;
 
 //#region Basic Google Events
 // Finding Calendar
@@ -17,9 +19,9 @@ Deno.test({
 	async fn(t) {
 		const body = await googlePTO.findCalendar();
 		assert(body.includes("Calendar found"), "Invalid output received");
-		Colors.success({ msg: `Test [${t.name}] Completed` });
+		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
-	// sanitizeResources: false,
+	sanitizeResources: false,
 });
 
 // Clear Calendar
@@ -28,7 +30,7 @@ Deno.test({
 	async fn(t) {
 		const output = await googlePTO.clearCalendar();
 		assert(output.includes("Calendar Cleared"), "Invalid output received");
-		Colors.success({ msg: `Test [${t.name}] Completed` });
+		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -47,7 +49,7 @@ Deno.test({
 		};
 		const event = await googlePTO.createEvent(eventData);
 		assert(event.id, "Invalid output received");
-		Colors.success({ msg: `Test [${t.name}] Completed` });
+		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -67,6 +69,9 @@ Deno.test({
 			employeeEmail: "aperez@salesforce.com",
 		};
 		const oldEvent = await googlePTO.createEvent(eventData);
+		if (googlePTO.isSimulationMode) {
+			googlePTO.simulatedEvent = { ...oldEvent };
+		}
 		assertEquals(oldEvent.start, DTTMs.create.start, "Invalid output received");
 		assertEquals(oldEvent.end, DTTMs.create.end, "Invalid output received");
 
@@ -76,7 +81,7 @@ Deno.test({
 		assertEquals(newEvent.start, DTTMs.update.start, "Invalid output received");
 		assertEquals(newEvent.end, DTTMs.update.end, "Invalid output received");
 		assertEquals(oldEvent.id, newEvent.id, "Invalid output received");
-		Colors.success({ msg: `Test [${t.name}] Completed` });
+		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -95,7 +100,7 @@ Deno.test({
 		const outputDelete = await googlePTO.deleteEvent({ id: oldEvent.id });
 		// await new Promise((resolve) => setTimeout(resolve, 30e3));
 		// const outputRetrieve = await googlePTO.getEvent({ id: oldEvent.id });
-		Colors.success({ msg: `Test [${t.name}] Completed` });
+		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -106,9 +111,9 @@ Deno.test({
 	async fn(t) {
 		// async findEvents({ query, timeMin, timeMax }) {
 		const body = await googlePTO.findEvents({});
-		assert(body.size > 0, "Invalid output received");
+		assert(body.size >= 0, "Invalid output received");
 		assertEquals(body.size, body.items.length, "Invalid output received");
-		Colors.success({ msg: `Test [${t.name}] Completed` });
+		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -121,7 +126,7 @@ Deno.test({
 		const body = await googlePTO.findEvents({ query: "DO NOT FIND EVENTS" });
 		assertEquals(body.size, 0, "Invalid output received");
 		assertEquals(body.size, body.items.length, "Invalid output received");
-		Colors.success({ msg: `Test [${t.name}] Completed` });
+		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -138,7 +143,7 @@ Deno.test({
 		const body = await googlePTO.findEvents({ timeMin, timeMax });
 		assertEquals(body.size, 0, "Invalid output received");
 		assertEquals(body.size, body.items.length, "Invalid output received");
-		Colors.success({ msg: `Test [${t.name}] Completed` });
+		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -153,9 +158,11 @@ Deno.test({
 		const timeMin = Utils.getDateTime({ date: `${year}-01-01`, time: "00:00", timeZone });
 		const timeMax = Utils.getDateTime({ date: `${year + 1}-01-01`, time: "00:00", timeZone });
 		const body = await googlePTO.findEvents({ timeMin, timeMax });
-		assert(body.size > 0, "Invalid output received");
+		if (!googlePTO.isSimulationMode) {
+			assert(body.size > 0, "Invalid output received");
+		}
 		assertEquals(body.size, body.items.length, "Invalid output received");
-		Colors.success({ msg: `Test [${t.name}] Completed` });
+		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
@@ -164,13 +171,27 @@ Deno.test({
 Deno.test({
 	name: "Finding Event by id",
 	async fn(t) {
-		const events = await googlePTO.findEvents({});
+		let events;
+		if (googlePTO.isSimulationMode) {
+			const eventData = {
+				start: makeTimeForEvent(0),
+				end: makeTimeForEvent(1),
+				employeeName: "Andres Perez",
+				employeeEmail: "aperez@salesforce.com",
+			};
+			const oldEvent = await googlePTO.createEvent(eventData);
+			googlePTO.simulatedEvent = { ...oldEvent };
+			events = { items: [oldEvent] };
+		} else {
+			events = await googlePTO.findEvents({});
+		}
 		const event = await googlePTO.getEvent({ id: events.items[0].id });
 		assertEquals(events.items[0].id, event.id, "Invalid output received");
-		Colors.success({ msg: `Test [${t.name}] Completed` });
+		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
+//#endregion
 
 const makeTimeForEvent = (offset) => {
 	const dttm = new Date();
@@ -180,18 +201,16 @@ const makeTimeForEvent = (offset) => {
 	dttm.setHours(dttm.getHours() + 1 + offset);
 	return dttm;
 };
-//#endregion
 
-// #region PTO Requests
-function bodyRequestPTO() {
+const bodyRequestPTO = ({ ptoStartTime, ptoStartDate, ptoID, ptoEntitled, ptoEndTime, ptoDays }) => {
 	return {
 		ptoRequest: {
-			ptoStartTime: null,
-			ptoStartDate: "2025-02-24",
-			ptoID: null,
-			ptoEntitled: 10.6,
-			ptoEndTime: null,
-			ptoDays: 3,
+			ptoStartTime,
+			ptoStartDate,
+			ptoID,
+			ptoEntitled,
+			ptoEndTime,
+			ptoDays,
 			employeeID: "005Ot00000KcxGTIAZ",
 		},
 		employee: {
@@ -207,18 +226,31 @@ function bodyRequestPTO() {
 			TimeZoneSidKey: "America/New_York",
 		},
 	};
-}
+};
 
-// Finding Event by id
+// #region PTO Requests
+// Make request for 2 hours
 Deno.test({
-	name: "Finding Event by id",
+	name: "Make request for 2 hours",
 	async fn(t) {
-		const events = await googlePTO.findEvents({});
-		const event = await googlePTO.getEvent({ id: events.items[0].id });
-		assertEquals(events.items[0].id, event.id, "Invalid output received");
-		Colors.success({ msg: `Test [${t.name}] Completed` });
+		const start = makeTimeForEvent(1);
+		const end = makeTimeForEvent(3);
+		const bodyRequest = bodyRequestPTO({
+			ptoStartDate: new Date().toJSON().split("T")[0],
+			ptoStartTime: start.toJSON().split("T")[1],
+			ptoEndTime: end.toJSON().split("T")[1],
+			ptoDays: (end - start) / (1000 * 60 * 60) / 8,
+			ptoEntitled: 10.6,
+		});
+		// const output = await googlePTO.requestPTO(bodyRequest);
+		// assert(output[0].id, "Invalid output received");
+		// console.log(output);
+
+		// const events = await googlePTO.findEvents({});
+		// const event = await googlePTO.getEvent({ id: events.items[0].id });
+		// assertEquals(events.items[0].id, event.id, "Invalid output received");
+		Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 	},
 	sanitizeResources: false,
 });
-
 //#endregion

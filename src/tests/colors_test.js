@@ -4,6 +4,7 @@ import Colors from "../colors.js";
 let denoTestCounter = 0;
 
 Deno.test("Show colors", (t) => {
+	Colors.isDebug = true;
 	Colors.tests();
 	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });

@@ -5,6 +5,8 @@ import ET_Asserts from "./etAsserts.js";
 export default class GooglePTO {
 	#googleWS;
 	#defaultCalendar = {};
+	simulatedEvent = {};
+	isSimulationMode = false;
 	#sendUpdates = "none"; // Send emails to attendees
 	#businessHours = {
 		day: 8, // 8 hours in a business day (Not 24!)
@@ -71,10 +73,16 @@ export default class GooglePTO {
 		if (!this.#defaultCalendar.id) {
 			await this.findCalendar();
 		}
-		const event = await this.#etFetch({
-			url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}`,
-			options: { method: "GET" },
-		});
+
+		let event;
+		if (!this.isSimulationMode) {
+			event = await this.#etFetch({
+				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}`,
+				options: { method: "GET" },
+			});
+		} else {
+			event = { ...this.simulatedEvent };
+		}
 
 		// Parse list
 		const output = {};
@@ -111,15 +119,23 @@ export default class GooglePTO {
 			attendees: [{ email: employeeEmail, responseStatus: "accepted" }],
 		};
 
-		const response = await this.#etFetch({
-			url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events?sendUpdates=${this.#sendUpdates}`,
-			options: {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(event),
-			},
-		});
-		const output = this.#getSimpleEvent({ event: response });
+		let output;
+		if (this.isSimulationMode) {
+			Utils.reportError({ error: "In simulation mode the Calendar API is not being called" });
+			let simulatedEvent = { ...event, id: "SIMULATED", creator: { email: "SIMULATED" } };
+			simulatedEvent = this.#getSimpleEvent({ event: simulatedEvent });
+			output = { simulation: "Create", ...simulatedEvent };
+		} else {
+			const response = await this.#etFetch({
+				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events?sendUpdates=${this.#sendUpdates}`,
+				options: {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(event),
+				},
+			});
+			const output = this.#getSimpleEvent({ event: response });
+		}
 		return output;
 	}
 
@@ -135,15 +151,23 @@ export default class GooglePTO {
 		if (event) {
 			event.start.dateTime = new Date(start).toJSON();
 			event.end.dateTime = new Date(end).toJSON();
-			const response = await this.#etFetch({
-				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}?sendUpdates=${this.#sendUpdates}`,
-				options: {
-					method: "PUT",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(event),
-				},
-			});
-			const output = this.#getSimpleEvent({ event: response });
+			let output;
+			if (this.isSimulationMode) {
+				Utils.reportError({ error: "In simulation mode the Calendar API is not being called" });
+				let simulatedEvent = { ...event, id: "SIMULATED", creator: { email: "SIMULATED" } };
+				simulatedEvent = this.#getSimpleEvent({ event: simulatedEvent });
+				output = { id: "SIMULATED", simulation: "Update", ...simulatedEvent };
+			} else {
+				const response = await this.#etFetch({
+					url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}?sendUpdates=${this.#sendUpdates}`,
+					options: {
+						method: "PUT",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify(event),
+					},
+				});
+				output = this.#getSimpleEvent({ event: response });
+			}
 			return output;
 		} else {
 			throw new Error(`Event with ID [${id}] was NOT found to be updated`);
@@ -175,6 +199,7 @@ export default class GooglePTO {
 	async clearCalendar() {
 		const events = await this.findEvents({});
 		const deleteEventsPromise = events.items.map((event) => {
+			// Do not await because they are run in parallel
 			return this.deleteEvent({ id: event.id });
 		});
 		await Promise.allSettled(deleteEventsPromise);
@@ -184,21 +209,27 @@ export default class GooglePTO {
 	// Sample bodyRequest is located here: /src/tests/googlePTO_test.js (bodyRequestPTO)
 	async requestPTO(bodyRequest) {
 		ET_Asserts.hasData({ value: bodyRequest, message: "bodyRequest" });
+		ET_Asserts.hasData({ value: bodyRequest.employee, message: "bodyRequest.employee" });
+		ET_Asserts.hasData({ value: bodyRequest.ptoRequest, message: "bodyRequest.ptoRequest" });
+		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.employeeID, fullMessage: "You must indicate the [employeeID] for the PTO request" });
+		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoStartDate, fullMessage: "You must indicate the [start date] for the PTO request" });
+		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoDays, fullMessage: "You must indicate the [duration (ptoDays)] for the PTO request" });
+		ET_Asserts.hasData({ value: bodyRequest.ptoRequest.ptoEntitled, fullMessage: "You must indicate the [PTO entitlements] for the PTO request" });
 
 		if (!this.#defaultCalendar.id) {
 			await this.findCalendar({});
 		}
 
-		let output = [];
+		const output = [];
 		const isUpdating = bodyRequest.ptoRequest.ptoID !== null;
 		const daysRequested = await this.#requestPTO_validateHours({ bodyRequest });
 		const employeeEvents = await this.#requestPTO_findEmployeeEvents({ bodyRequest, year: new Date().getFullYear() });
 		const hoursTaken = await this.#requestPTO_calculateHoursTaken({ employeeEvents });
 
 		if (isUpdating) {
-			output = await this.#requestPTO_Update({ bodyRequest, output, daysRequested, employeeEvents, hoursTaken });
+			await this.#requestPTO_Update({ bodyRequest, output, daysRequested, employeeEvents, hoursTaken });
 		} else {
-			output = await this.#requestPTO_Create({ bodyRequest, output, daysRequested, employeeEvents, hoursTaken });
+			await this.#requestPTO_Create({ bodyRequest, output, daysRequested, employeeEvents, hoursTaken });
 		}
 		return output;
 	}
@@ -264,14 +295,21 @@ export default class GooglePTO {
 		await this.#requestPTO_validateEntitlementPTO({ bodyRequest, oldEvent, hoursRequested, hoursTaken });
 		const employeeName = bodyRequest.employee.Name;
 		const employeeEmail = bodyRequest.employee.Email;
-		const newEventsPromise = dates.map((date) => {
-			const p = this.createEvent({ start: date.start, end: date.end, employeeName, employeeEmail });
-			p.then((newEvent) => {
-				output.push(newEvent);
-			});
-			return p;
-		});
-		await Promise.allSettled(newEventsPromise);
+
+		// I may be exceeding limits with this...
+		// const newEventsPromise = dates.map((date) => {
+		// 	// Do not await because they are run in parallel...
+		// 	const p = this.createEvent({ start: date.start, end: date.end, employeeName, employeeEmail });
+		// 	p.then((newEvent) => {
+		// 		output.push(newEvent);
+		// 	});
+		// 	return p;
+		// });
+		// await Promise.allSettled(newEventsPromise);
+		for (const date of dates) {
+			const newEvent = await this.createEvent({ start: date.start, end: date.end, employeeName, employeeEmail });
+			output.push(newEvent);
+		}
 	}
 
 	async #requestPTO_CreateHours({ bodyRequest, output, oldEvent, hoursTaken, employeeEvents }) {
@@ -321,11 +359,11 @@ export default class GooglePTO {
 		const fraction = daysRequested - Math.floor(daysRequested);
 		if (daysRequested >= 1) {
 			if (!fraction) return daysRequested;
-			throw new Error(`Days requested ${daysRequested} can not have fractions when requesting more than one day`);
+			throw new Error(`Days requested [${daysRequested}] can not have fractions when requesting more than one day`);
 		} else {
 			if (fraction) return daysRequested;
-			if (daysRequested === 0) throw new Error(`Days requested ${daysRequested} must be greater than 0`);
-			throw new Error(`Days requested ${daysRequested} must be a fraction when requesting less than one day`);
+			if (daysRequested === 0) throw new Error(`Days requested [${daysRequested}] must be greater than 0`);
+			throw new Error(`Days requested [${daysRequested}] must be a fraction when requesting less than one day`);
 		}
 	}
 
@@ -336,7 +374,7 @@ export default class GooglePTO {
 		ET_Asserts.hasData({ value: hoursRequested, message: "hoursRequested" });
 
 		let durationOldEvent = 0;
-		if (oldEvent.start || oldEvent.end) {
+		if (Object.keys(oldEvent).length > 0) {
 			durationOldEvent = (new Date(oldEvent.end.dateTime) - new Date(oldEvent.start.dateTime)) / (1000 * 60 * 60);
 		}
 		const totalHours = hoursTaken - durationOldEvent + hoursRequested;
@@ -391,7 +429,7 @@ export default class GooglePTO {
 			await this.#googleWS.loginWithRefreshToken();
 			await makeRequest();
 		}
-		if (response.status === expectedStatus) {
+		if (this.isSimulationMode || response.status === expectedStatus) {
 			if (response.body) {
 				response = await response.json();
 				Colors.debug({ msg: response });

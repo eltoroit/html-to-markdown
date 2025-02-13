@@ -2,8 +2,12 @@ import Utils from "../utils.js";
 import Colors from "../colors.js";
 import { assertEquals } from "jsr:@std/assert";
 
+Colors.isDebug = true;
+Colors.tests();
+
 let denoTestCounter = 0;
 const date = "2025-02-10";
+
 const testValues = [
 	{
 		timeZone: "America/Toronto",

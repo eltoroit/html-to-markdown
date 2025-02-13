@@ -144,9 +144,7 @@ export default class Colors {
 		const isDebug = envColors === "TRUE";
 		Colors.isDebug = isDebug;
 		console.log(`ENV Colors: ${envColors} => isDebug: ${isDebug}`);
-		setTimeout(() => {
-			Colors.debug({ msg: `Debug Mode: ${isDebug}` });
-		}, 0);
+		console.log({ msg: `Debug Mode: ${isDebug}` });
 	}
 }
 
