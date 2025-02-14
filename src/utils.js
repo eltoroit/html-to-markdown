@@ -136,13 +136,13 @@ export default class Utils {
 		const firstLine = lines[0]; // First line is the error message
 
 		// Define patterns for exclusion and inclusion
-		const includePatterns = [/HerokuPTO/];
+		const includePatterns = [/file:\/\/.*src/];
 		const excludePatterns = [/etAsserts\.js/, /colors\.js/, , /utils\.js/];
 
 		// Filter relevant stack trace lines
 		let filteredLines = lines.slice(1);
 		filteredLines = filteredLines.filter((line) => {
-			console.log(line);
+			// console.log(line);
 			return includePatterns.some((pattern) => pattern.test(line));
 		});
 		filteredLines = filteredLines.filter((line) => {
