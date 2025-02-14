@@ -93,9 +93,9 @@ export default class GooglePTO {
 
 		let event;
 		if (this.simulation.isActive) {
+			Utils.reportError({ error: "Simulating [getEvent]. In simulation mode the Calendar API is not being called" });
 			event = { ...this.simulation.events[id] };
 		} else {
-			Utils.reportError({ error: "Simulating [getEvent]. In simulation mode the Calendar API is not being called" });
 			event = await this.#etFetch({
 				url: `https://www.googleapis.com/calendar/v3/calendars/${this.#defaultCalendar.id}/events/${id}`,
 				options: { method: "GET" },
