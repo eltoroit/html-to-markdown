@@ -1,6 +1,7 @@
+import Colors from "./colors.js";
 import { Application, Router } from "jsr:@oak/oak";
 
-export class Webserver {
+export default class Webserver {
 	#router = new Router();
 
 	constructor() {}
@@ -49,7 +50,7 @@ export class Webserver {
 
 	#serveHTTP({ app, port }) {
 		app.listen({ port });
-		console.log(`Server running on HTTP ${port}: http://localhost:${port}`);
+		Colors.info({ msg: `Server running on HTTP ${port}: http://localhost:${port}` });
 	}
 
 	async #serveHTTPS({ app, port }) {
@@ -68,23 +69,23 @@ export class Webserver {
 			cert: certs.public,
 			key: certs.private,
 		});
-		console.log(`Server running on HTTPS port ${port}: https://localhost:${port}`);
+		Colors.info({ msg: `Server running on HTTPS port ${port}: https://localhost:${port}` });
 	}
 }
 
 // // CORS middleware
 // app.use(async (ctx, next) => {
-//   ctx.response.headers.set("Access-Control-Allow-Origin", "*");
-//   ctx.response.headers.set(
-//     "Access-Control-Allow-Methods",
-//     "GET, POST, OPTIONS"
-//   );
-//   ctx.response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+//  ctx.response.headers.set("Access-Control-Allow-Origin", "*");
+//  ctx.response.headers.set(
+//   "Access-Control-Allow-Methods",
+//   "GET, POST, OPTIONS"
+//  );
+//  ctx.response.headers.set("Access-Control-Allow-Headers", "Content-Type");
 
-//   if (ctx.request.method === "OPTIONS") {
-//     ctx.response.status = 204;
-//     return;
-//   }
+//  if (ctx.request.method === "OPTIONS") {
+//   ctx.response.status = 204;
+//   return;
+//  }
 
-//   await next();
+//  await next();
 // });

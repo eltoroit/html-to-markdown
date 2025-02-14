@@ -1,6 +1,7 @@
+import Utils from "./utils.js";
 import ET_Asserts from "./etAsserts.js";
 
-// Define variables
+//#region Color Variables)
 const clearScreenCode = "\x1B[2J";
 
 // Color Modes
@@ -32,8 +33,11 @@ const colorBgBlue = "\x1b[44m";
 const colorBgMagenta = "\x1b[45m";
 const colorBgCyan = "\x1b[46m";
 const colorBgWhite = "\x1b[47m";
+//#endregion
 
 export default class Colors {
+	static isDebug = false;
+
 	static clearScreen() {
 		console.log(clearScreenCode);
 	}
@@ -42,64 +46,106 @@ export default class Colors {
 	static debug({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		console.log(colorBgBlack + colorBright + colorFgGray + msg + colorReset);
+		if (this.isDebug) {
+			console.log(colorBgBlack + colorBright + colorFgGray + this.#msgToText({ level: "DEBUG", msg }) + colorReset);
+		}
 	}
 
-	static command({ msg }) {
+	static finest({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		console.log(colorBgBlack + colorBright + colorFgYellow + msg + colorReset);
+		console.log(colorBgBlack + colorFgCyan + this.#msgToText({ level: "FINEST", msg }) + colorReset);
 	}
 
-	static status({ msg }) {
+	static fine({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
-
-		console.log(colorBgBlack + colorBright + colorFgMagenta + msg + colorReset);
+		console.log(colorBgBlack + colorFgMagenta + this.#msgToText({ level: "FINE", msg }) + colorReset);
 	}
 
-	static note({ msg }) {
+	static info({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
-
-		console.log(colorBgBlack + colorBright + colorFgWhite + msg + colorReset);
+		console.log(colorBgBlack + colorBright + colorFgWhite + this.#msgToText({ level: "INFO", msg }) + colorReset);
 	}
 
-	static error({ msg }) {
+	static warn({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		console.log(colorBgBlack + colorBright + colorFgRed + msg + colorReset);
+		console.log(colorBgBlack + colorBright + colorFgYellow + this.#msgToText({ level: "WARN", msg }) + colorReset);
 	}
 
 	static success({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		console.log(colorBgBlack + colorBright + colorFgGreen + msg + colorReset);
+		console.log(colorBgBlack + colorBright + colorFgGreen + this.#msgToText({ level: "SUCCESS", msg }) + colorReset);
 	}
 
-	static message({ msg }) {
+	static errorDoNotUse({ msg }) {
 		ET_Asserts.hasData({ value: msg, message: "msg" });
-		console.log(colorBgBlack + colorBright + colorFgCyan + msg + colorReset);
-	}
 
-	static done() {
-		console.log(colorBgBlack + colorBright + colorFgGreen + "Task Completed" + colorReset);
-		console.log(colorBgBlack + colorBright + colorFgGreen + new Date() + colorReset);
+		console.log(colorBgBlack + colorBright + colorFgRed + this.#msgToText({ level: "ERROR", msg }) + colorReset);
 	}
 	//#endregion
 
-	static getPrettyJson({ obj }) {
-		ET_Asserts.hasData({ value: obj, message: "obj" });
+	static #msgToText({ level, msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
+		ET_Asserts.hasData({ value: level, message: "level" });
 
-		return JSON.stringify(obj, null, 4);
+		function isPrimitive(value) {
+			let type = Object.prototype.toString.call(value);
+			type = type.substring(type.indexOf(" ") + 1, type.indexOf("]"));
+			return !["array", "object", "function"].includes(type.toLowerCase());
+		}
+
+		let stack;
+		try {
+			const parsedLines = Utils.getParsedStack({});
+			stack = parsedLines.filteredLines[0];
+			stack = stack.substring(stack.lastIndexOf("/") + 1);
+			stack = stack.replace(/\)/g, "");
+		} catch (ex) {
+			// console.log(new Error().stack);
+		}
+
+		let output;
+		if (isPrimitive(msg)) {
+			output = msg;
+		} else {
+			output = JSON.stringify(msg);
+		}
+		output = `${level.toUpperCase().padEnd(10, "_")}: ${output}`;
+		if (stack) {
+			output += ` (${stack})`;
+		}
+		return output;
 	}
 
 	static tests() {
-		Colors.debug({ msg: "debug" });
-		Colors.command({ msg: "command" });
-		Colors.status({ msg: "status" });
-		Colors.note({ msg: "note" });
-		Colors.error({ msg: "error" });
-		Colors.success({ msg: "success" });
-		Colors.message({ msg: "message" });
-		Colors.done();
+		console.log(clearScreenCode);
+
+		if (!Colors.isDebug) {
+			Colors.isDebug = true;
+			Colors.debug({ msg: `0. DEBUG (Skipping debug because isDebug is false)` });
+			Colors.isDebug = false;
+		}
+		Colors.debug({ msg: "0. DEBUG" });
+		Colors.finest({ msg: "1. FINEST" });
+		Colors.fine({ msg: "2. FINE" });
+		Colors.info({ msg: "3. INFO" });
+		Colors.warn({ msg: "4. WARN" });
+		Colors.success({ msg: "5. SUCCESS" });
+		Utils.reportError({ error: "6. ERROR" });
+
+		console.log("");
+	}
+
+	static initialize() {
+		// Is Debug?
+		const envColors = Deno.env.get("IS_DEBUG");
+		const isDebug = envColors === "TRUE";
+		Colors.isDebug = isDebug;
+		console.log(`ENV Colors: ${envColors} => isDebug: ${isDebug}`);
+		console.log(`Debug Mode: ${isDebug}`);
 	}
 }
+
+Colors.initialize();

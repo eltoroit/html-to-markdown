@@ -1,9 +1,7 @@
 import Colors from "./colors.js";
 import ET_Asserts from "./etAsserts.js";
 
-export class Utils {
-	static IsDebug;
-
+export default class Utils {
 	static getDateTime({ date, time, timeZone }) {
 		// Handle different time formats
 		const parseTime = (timeStr) => {
@@ -65,8 +63,8 @@ export class Utils {
 			return JSON.stringify(tmp);
 		};
 
-		if (this.isDebug) console.log("---");
-		if (this.isDebug) console.log(`New Event:`, forPrint(newEvent));
+		Colors.debug({ msg: "---" });
+		Colors.debug({ msg: `New Event: ${forPrint(newEvent)}` });
 		if (newEvent.start > newEvent.end) {
 			throw new Error("Event start time can't be later than event end time");
 		}
@@ -81,41 +79,75 @@ export class Utils {
 			const encompassesExisting = newEvent.start <= event.start && newEvent.end >= event.end;
 
 			const output = newStartOverlaps || newEndOverlaps || encompassesExisting;
-			if (this.isDebug) {
-				console.log(
-					`Old Event: ${forPrint(event)} | output: ${output} | newStartOverlaps: ${newStartOverlaps} |  newEndOverlaps: ${newEndOverlaps} | encompassesExisting: ${encompassesExisting}`
-				);
-			}
+			Colors.debug({
+				msg: `Old Event: ${forPrint(event)} | output: ${output} | newStartOverlaps: ${newStartOverlaps} | newEndOverlaps: ${newEndOverlaps} | encompassesExisting: ${encompassesExisting}`,
+			});
 
 			return output;
 		});
 	}
 
-	static reportError({ ctx, error, exception }) {
-		if (error) Utils.#reportError({ ctx, msg: error });
-		if (exception) Utils.#reportException({ ctx, message: error, exception });
+	static reportError({ ctx, error, ex }) {
+		ET_Asserts.hasData({ value: error || ex, message: "Either error or ex must be provided" });
+
+		let msg;
+		if (error) msg = Utils.#reportError({ msg: error });
+		if (ex) msg = Utils.#reportException({ ex });
+		if (ctx) {
+			ctx.response.status = 503;
+			ctx.response.body = msg;
+		}
 	}
 
-	static #reportException({ ctx, message, exception }) {
-		ET_Asserts.hasData({ value: ctx, message: "ctx" });
-		// ET_Asserts.hasData({ value: message, message: "message" });
-		// ET_Asserts.hasData({ value: exception, message: "exception" });
+	static #reportException({ ex }) {
+		ET_Asserts.hasData({ value: ex, message: "ex" });
 
-		const error = {};
-		if (exception.message) error.message = exception.message;
-		if (exception.stack) error.stack = exception.stack;
-		const msg = Colors.getPrettyJson({ obj: error });
-		Colors.error({ msg });
-		ctx.response.status = 503;
-		ctx.response.body = msg;
+		let error = null;
+		if (ex.stack) {
+			error = ex.stack;
+			const parsedStack = Utils.getParsedStack({ stack: ex.stack });
+			[parsedStack.firstLine, ...parsedStack.filteredLines].forEach((line) => {
+				Colors.errorDoNotUse({ msg: line });
+			});
+		} else if (error.message) {
+			error = ex.message;
+			Colors.errorDoNotUse({ msg: error.message });
+		} else {
+			// This is a valid use for console.log();
+			console.log(ex);
+			throw new Error("What was the exception?");
+		}
+		return error;
 	}
 
-	static #reportError({ ctx, msg }) {
-		ET_Asserts.hasData({ value: ctx, message: "ctx" });
-		ET_Asserts.hasData({ value: message, message: "message" });
+	static #reportError({ msg }) {
+		ET_Asserts.hasData({ value: msg, message: "msg" });
 
-		Colors.error({ msg });
-		ctx.response.status = 503;
-		ctx.response.body = msg;
+		Colors.errorDoNotUse({ msg });
+		return msg;
+	}
+
+	static getParsedStack({ stack }) {
+		if (!stack) {
+			stack = new Error().stack;
+		}
+
+		const lines = stack.split("\n");
+		const firstLine = lines[0]; // First line is the error message
+
+		// Define patterns for exclusion and inclusion
+		const includePattern = /HerokuPTO/;
+		const excludePatterns = [/etAsserts\.js/, /colors\.js/, , /utils\.js/];
+
+		// Filter relevant stack trace lines
+		let filteredLines = lines.slice(1);
+		filteredLines = filteredLines.filter((line) => {
+			return includePattern.test(line);
+		});
+		filteredLines = filteredLines.filter((line) => {
+			return !excludePatterns.some((pattern) => pattern.test(line));
+		});
+
+		return { firstLine, filteredLines };
 	}
 }

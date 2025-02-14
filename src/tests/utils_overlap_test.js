@@ -1,8 +1,12 @@
-import { Utils } from "../utils.js";
+import Utils from "../utils.js";
+import Colors from "../colors.js";
 import { assert, assertEquals } from "jsr:@std/assert";
 
+Colors.isDebug = true;
+Colors.tests();
+
 let events = [];
-Utils.IsDebug = false;
+let denoTestCounter = 0;
 
 function addEvent(newEvent) {
 	const hasOverlap = Utils.hasOverlap({ events, newEvent });
@@ -29,7 +33,7 @@ baseEvents.forEach((newEvent) => {
 });
 
 //#region Good Events
-Deno.test("Event #GOOD_01 - Well Before", () => {
+Deno.test("Event #GOOD_01 - Well Before", (t) => {
 	const newEvent = {
 		added: true,
 		start: new Date("2025-02-10T09:00:00-05:00"),
@@ -39,9 +43,10 @@ Deno.test("Event #GOOD_01 - Well Before", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #GOOD_02 - Ends on time", () => {
+Deno.test("Event #GOOD_02 - Ends on time", (t) => {
 	const newEvent = {
 		added: true,
 		start: new Date("2025-02-10T09:00:00-05:00"),
@@ -51,9 +56,10 @@ Deno.test("Event #GOOD_02 - Ends on time", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #GOOD_03 - Squezzed", () => {
+Deno.test("Event #GOOD_03 - Squezzed", (t) => {
 	const newEvent = {
 		added: true,
 		start: new Date("2025-02-10T11:00:00-05:00"),
@@ -63,9 +69,10 @@ Deno.test("Event #GOOD_03 - Squezzed", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #GOOD_04 - Between meetings", () => {
+Deno.test("Event #GOOD_04 - Between meetings", (t) => {
 	const newEvent = {
 		added: true,
 		start: new Date("2025-02-10T11:15:00-05:00"),
@@ -75,9 +82,10 @@ Deno.test("Event #GOOD_04 - Between meetings", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #GOOD_05 - Just before", () => {
+Deno.test("Event #GOOD_05 - Just before", (t) => {
 	const newEvent = {
 		added: true,
 		start: new Date("2025-02-10T11:15:00-05:00"),
@@ -87,9 +95,10 @@ Deno.test("Event #GOOD_05 - Just before", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #GOOD_06 - Just after", () => {
+Deno.test("Event #GOOD_06 - Just after", (t) => {
 	const newEvent = {
 		added: true,
 		start: new Date("2025-02-10T12:00:00-05:00"),
@@ -99,9 +108,10 @@ Deno.test("Event #GOOD_06 - Just after", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #GOOD_07 - Well past", () => {
+Deno.test("Event #GOOD_07 - Well past", (t) => {
 	const newEvent = {
 		added: true,
 		start: new Date("2025-02-10T14:00:00-05:00"),
@@ -111,9 +121,10 @@ Deno.test("Event #GOOD_07 - Well past", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #GOOD_08 - Day before", () => {
+Deno.test("Event #GOOD_08 - Day before", (t) => {
 	const newEvent = {
 		added: true,
 		start: new Date("2025-02-09T08:00:00-05:00"),
@@ -123,9 +134,10 @@ Deno.test("Event #GOOD_08 - Day before", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #GOOD_09 - Day after", () => {
+Deno.test("Event #GOOD_09 - Day after", (t) => {
 	const newEvent = {
 		added: true,
 		start: new Date("2025-02-09T08:00:00-05:00"),
@@ -135,11 +147,12 @@ Deno.test("Event #GOOD_09 - Day after", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 //#endregion
 
 //#region Bad Events
-Deno.test("Event #BAD_01 - Ends too late", () => {
+Deno.test("Event #BAD_01 - Ends too late", (t) => {
 	const newEvent = {
 		added: false,
 		start: new Date("2025-02-10T09:00:00-05:00"),
@@ -149,9 +162,10 @@ Deno.test("Event #BAD_01 - Ends too late", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #BAD_02 - Exact meeting", () => {
+Deno.test("Event #BAD_02 - Exact meeting", (t) => {
 	const newEvent = {
 		added: false,
 		start: new Date("2025-02-10T10:00:00-05:00"),
@@ -161,9 +175,10 @@ Deno.test("Event #BAD_02 - Exact meeting", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #BAD_03 - Inside meeting", () => {
+Deno.test("Event #BAD_03 - Inside meeting", (t) => {
 	const newEvent = {
 		added: false,
 		start: new Date("2025-02-10T10:10:00-05:00"),
@@ -173,9 +188,10 @@ Deno.test("Event #BAD_03 - Inside meeting", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #BAD_04 - Starts Early", () => {
+Deno.test("Event #BAD_04 - Starts Early", (t) => {
 	const newEvent = {
 		added: false,
 		start: new Date("2025-02-10T10:30:00-05:00"),
@@ -185,9 +201,10 @@ Deno.test("Event #BAD_04 - Starts Early", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #BAD_05 - Ends too late", () => {
+Deno.test("Event #BAD_05 - Ends too late", (t) => {
 	const newEvent = {
 		added: false,
 		start: new Date("2025-02-10T11:15:00-05:00"),
@@ -197,9 +214,10 @@ Deno.test("Event #BAD_05 - Ends too late", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #BAD_06 - Longer meeting", () => {
+Deno.test("Event #BAD_06 - Longer meeting", (t) => {
 	const newEvent = {
 		added: false,
 		start: new Date("2025-02-10T09:00:00-05:00"),
@@ -209,9 +227,10 @@ Deno.test("Event #BAD_06 - Longer meeting", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #BAD_07 - Full day", () => {
+Deno.test("Event #BAD_07 - Full day", (t) => {
 	const newEvent = {
 		added: false,
 		start: new Date("2025-02-10T09:00:00-05:00"),
@@ -221,10 +240,11 @@ Deno.test("Event #BAD_07 - Full day", () => {
 	const added = addEvent(newEvent);
 	events = events.filter((event) => event.title !== newEvent.title);
 	assertEquals(added, newEvent.added);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 //#endregion
 
-Deno.test("Event #EXCEPTION_01 - Inverted timestamps", () => {
+Deno.test("Event #EXCEPTION_01 - Inverted timestamps", (t) => {
 	const newEvent = {
 		added: false,
 		start: new Date("2025-02-10T17:00:00-05:00"),
@@ -232,15 +252,18 @@ Deno.test("Event #EXCEPTION_01 - Inverted timestamps", () => {
 		title: "TEST EVENT",
 	};
 	try {
-		const added = addEvent(newEvent);
-		assert(false, "Excetion not thrown");
+		addEvent(newEvent);
+		assert(false, "Expected exception was NOT thrown");
 	} catch (ex) {
-		assertEquals(ex.message, "Event start time can't be later than event end time");
+		const isExpectedException = ex.message.includes("Event start time can't be later than event end time");
+		if (!isExpectedException) Utils.reportError({ ex });
+		assert(isExpectedException, "Invalid assertion received");
 	}
 	events = events.filter((event) => event.title !== newEvent.title);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
-Deno.test("Event #EXCEPTION_02 - Same timestamps", () => {
+Deno.test("Event #EXCEPTION_02 - Same timestamps", (t) => {
 	const newEvent = {
 		added: false,
 		start: new Date("2025-02-10T17:00:00-05:00"),
@@ -249,9 +272,12 @@ Deno.test("Event #EXCEPTION_02 - Same timestamps", () => {
 	};
 	try {
 		addEvent(newEvent);
-		assert(false, "Excetion not thrown");
+		assert(false, "Expected exception was NOT thrown");
 	} catch (ex) {
-		assertEquals(ex.message, "Event start time can't be the same as the event end time");
+		const isExpectedException = ex.message.includes("Event start time can't be the same as the event end time");
+		if (!isExpectedException) Utils.reportError({ ex });
+		assert(isExpectedException, "Invalid assertion received");
 	}
 	events = events.filter((event) => event.title !== newEvent.title);
+	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });

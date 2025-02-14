@@ -1,13 +1,13 @@
 # DENO
 
 -   Add dependencies
-    -   `deno add jsr:@oak/oak`
-    -   `deno add npm:turndown`
-    -   https://deno.land/x/google_api@v1.2
+-   `deno add jsr:@oak/oak`
+-   `deno add npm:turndown`
+-   https://deno.land/x/google_api@v1.2
 -   Install
-    -   `deno install`
+-   `deno install`
 -   run App
-    -   `deno run --allow-env --allow-net ./main.js`
+-   `deno run --allow-env --allow-net ./main.js`
 
 # WEB SERVER
 
@@ -31,10 +31,11 @@ openssl req -x509 -out localhost.crt -keyout localhost.key -newkey rsa:2048 -nod
 # SALESFORCE
 
 -   Time zones
-    ```
-    String val = '2025-02-08T12:00:00-06:00';
-    DateTime dt = (DateTime)Json.deserialize('"'+val+'"', DateTime.class);
-    System.debug('Original time (GMT): ' + dt.formatGmt('yyyy-MM-dd HH:mm:ss'));
-    System.debug('Toronto time: ' + dt.format('yyyy-MM-dd HH:mm:ss', 'America/Toronto'));
-    System.debug('Los Angeles time: ' + dt.format('yyyy-MM-dd HH:mm:ss', 'America/Los_Angeles'));
-    ```
+
+```
+String val = '2025-02-08T12:00:00-06:00';
+DateTime dt = (DateTime)Json.deserialize('"'+val+'"', DateTime.class);
+System.debug('Original time (GMT): ' + dt.formatGmt('yyyy-MM-dd HH:mm:ss'));
+System.debug('Toronto time: ' + dt.format('yyyy-MM-dd HH:mm:ss', 'America/Toronto'));
+System.debug('Los Angeles time: ' + dt.format('yyyy-MM-dd HH:mm:ss', 'America/Los_Angeles'));
+```
