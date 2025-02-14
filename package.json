@@ -1,10 +1,10 @@
 {
 	"scripts": {
-		"watch": "deno run --watch --allow-all --env-file ./main.js",
-		"serve": "deno run $DEBUG_DENO --allow-env --allow-net --allow-read --allow-write --env-file ./main.js",
-		"heroku": "deno run --allow-env --allow-net --allow-read --allow-write ./main.js",
+		"watch": "deno run --watch --allow-all --env-file ./src/main.js",
+		"serve": "deno run $DEBUG_DENO --allow-env --allow-net --allow-read --allow-write --env-file ./src/main.js",
+		"heroku": "deno run --allow-env --allow-net --allow-read --allow-write ./src/main.js",
 		"heroku:logs": "heroku logs --source app --app agentforce-pto --tail",
-		"heroku:debug": "./simulateHeroku.sh",
+		"heroku:simulator": "./simulateHeroku.sh",
 		"unitTests": "./unitTestWithCoverage.sh"
 	},
 	"dependencies": {

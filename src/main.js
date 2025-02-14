@@ -1,7 +1,7 @@
-import Utils from "./src/utils.js";
-import Colors from "./src/colors.js";
-import GoogleWS from "./src/googleWS.js";
-import Webserver from "./src/webserver.js";
+import Utils from "./utils.js";
+import Colors from "./colors.js";
+import GoogleWS from "./googleWS.js";
+import Webserver from "./webserver.js";
 
 // deno-lint-ignore no-constant-condition
 if (true) {
