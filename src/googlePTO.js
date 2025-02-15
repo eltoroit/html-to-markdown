@@ -143,6 +143,8 @@ export default class GooglePTO {
 		if (this.simulation.isActive) {
 			Utils.reportError({ error: "Simulating [createEvent]. In simulation mode the Calendar API is not being called" });
 			const id = new Date().toJSON();
+			event.start.timeZone = "America/Toronto";
+			event.end.timeZone = "America/Toronto";
 			this.simulation.events[id] = { ...event, id, status: "confirmed", creator: { email: "SIMULATED" } };
 			output = this.#getSimpleEvent({ event: this.simulation.events[id] });
 		} else {
