@@ -79,7 +79,7 @@ export default class GoogleWS {
 		router.post("/event", async (ctx) => {
 			const bodyRequest = await ctx.request.body.json();
 			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
-			Colors.info({ msg: bodyRequest });
+			Colors.debug({ msg: bodyRequest });
 			try {
 				const bodyResponse = await this.#googlePTO.createEvent(bodyRequest);
 				ctx.response.type = "json";
@@ -97,7 +97,7 @@ export default class GoogleWS {
 			const id = queryParams.get("id");
 			const bodyRequest = await ctx.request.body.json();
 			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
-			Colors.info({ msg: bodyRequest });
+			Colors.debug({ msg: bodyRequest });
 			try {
 				const bodyResponse = await this.#googlePTO.updateEvent({ id, ...bodyRequest });
 				ctx.response.type = "json";
@@ -143,7 +143,7 @@ export default class GoogleWS {
 		router.post("/requestPTO", async (ctx) => {
 			const bodyRequest = await ctx.request.body.json();
 			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
-			Colors.info({ msg: bodyRequest });
+			Colors.debug({ msg: bodyRequest });
 			try {
 				const bodyResponse = await this.#googlePTO.requestPTO(bodyRequest);
 				ctx.response.type = "json";
