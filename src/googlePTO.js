@@ -33,6 +33,7 @@ export default class GooglePTO {
 				}
 			} else {
 				Utils.reportError({ error: "DEMO ONLY: Clearing calendar, except for summer days" });
+				// Google Calendar API does not like to crate too many calendar events, but it's OK deleting them :-)
 				const events = await this.findEvents({});
 				for (const event of events.items) {
 					if (event.start < new Date("2025-06-15")) {
@@ -165,6 +166,7 @@ export default class GooglePTO {
 
 		let output;
 		if (this.simulation.isActive) {
+			await new Promise((resolve) => setTimeout(resolve, 5));
 			Utils.reportError({ error: "Simulating [createEvent]. In simulation mode the Calendar API is not being called" });
 			const id = new Date().toJSON();
 			event.start.timeZone = "America/Toronto";
