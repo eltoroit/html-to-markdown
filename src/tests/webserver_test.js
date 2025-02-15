@@ -7,7 +7,7 @@ Colors.tests();
 let denoTestCounter = 0;
 
 // Spawn the server in a worker thread
-const serverPath = new URL("../../main.js", import.meta.url).href;
+const serverPath = new URL("../main.js", import.meta.url).href;
 const worker = new Worker(serverPath, { type: "module", deno: true });
 
 // Wait for a moment to let the server start (this is a little hacky actually)

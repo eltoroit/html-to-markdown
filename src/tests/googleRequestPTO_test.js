@@ -24,11 +24,11 @@ const makeTimeForEvent = (offset) => {
 const bodyRequestPTO = (overrides = {}) => {
 	const bodyRequest = {
 		ptoRequest: {
-			ptoStartTime: null,
+			ptoStartDTTM: null,
 			ptoStartDate: null,
 			ptoID: null,
 			ptoEntitled: null,
-			ptoEndTime: null,
+			ptoEndDTTM: null,
 			ptoDays: null,
 			employeeID: "005Ot00000KcxGTIAZ",
 			...overrides,
@@ -77,8 +77,8 @@ Deno.test("Make request for 2 hours", async (t) => {
 	const end = makeTimeForEvent(3);
 	const bodyRequest = bodyRequestPTO({
 		ptoStartDate: new Date().toJSON().split("T")[0],
-		ptoStartTime: start.toJSON(),
-		ptoEndTime: end.toJSON(),
+		ptoStartDTTM: start.toJSON(),
+		ptoEndDTTM: end.toJSON(),
 		ptoDays: (end - start) / (1000 * 60 * 60) / 8,
 		ptoEntitled: 10.6,
 	});
@@ -107,15 +107,15 @@ Deno.test("Make request for 2 hours but ptoDays >= 1 (Times will be ignored)", a
 	const end = makeTimeForEvent(3);
 	const bodyRequest = bodyRequestPTO({
 		ptoStartDate: new Date().toJSON().split("T")[0],
-		ptoStartTime: start.toJSON().split("T")[1],
-		ptoEndTime: end.toJSON().split("T")[1],
+		ptoStartDTTM: start.toJSON().split("T")[1],
+		ptoEndDTTM: end.toJSON().split("T")[1],
 		ptoDays: 2,
 		ptoEntitled: 10.6,
 	});
 	const events = await googlePTO.requestPTO(bodyRequest);
 	assertEquals(events.length, 2);
 	assert(events[0].start !== bodyRequest.ptoStartDate);
-	assert(events[0].end !== bodyRequest.ptoEndTime);
+	assert(events[0].end !== bodyRequest.ptoEndDTTM);
 	Colors.success({ msg: `Test #${++denoTestCounter}: [${t.name}] Completed` });
 });
 
@@ -148,8 +148,8 @@ Deno.test("Make request for 2 hours (twice, should fail)", async (t) => {
 	const end = makeTimeForEvent(3);
 	const bodyRequest = bodyRequestPTO({
 		ptoStartDate: new Date().toJSON().split("T")[0],
-		ptoStartTime: start.toJSON(),
-		ptoEndTime: end.toJSON(),
+		ptoStartDTTM: start.toJSON(),
+		ptoEndDTTM: end.toJSON(),
 		ptoDays: (end - start) / (1000 * 60 * 60) / 8,
 		ptoEntitled: 10.6,
 	});
@@ -264,8 +264,8 @@ Deno.test("Request More Than 8 Hours In One Day", async (t) => {
 	const end = new Date("2025-02-13T14:00:00.000Z");
 	const bodyRequest = bodyRequestPTO({
 		ptoStartDate: start.toJSON().split("T")[0],
-		ptoStartTime: start.toJSON(),
-		ptoEndTime: end.toJSON(),
+		ptoStartDTTM: start.toJSON(),
+		ptoEndDTTM: end.toJSON(),
 		ptoDays: 0.5,
 		ptoEntitled: 10.6,
 	});
@@ -312,8 +312,8 @@ Deno.test("Update existing PTO request - Full day to partial day", async (t) => 
 	const end = makeTimeForEvent(3);
 	const updateRequest = bodyRequestPTO({
 		ptoStartDate: new Date().toJSON().split("T")[0],
-		ptoStartTime: start.toJSON(),
-		ptoEndTime: end.toJSON(),
+		ptoStartDTTM: start.toJSON(),
+		ptoEndDTTM: end.toJSON(),
 		ptoDays: 0.25,
 		ptoEntitled: 10.6,
 		ptoID,
@@ -358,8 +358,8 @@ Deno.test("Update existing PTO request - Partial day to full day", async (t) => 
 	const end = makeTimeForEvent(3);
 	const updateRequest = bodyRequestPTO({
 		ptoStartDate: new Date().toJSON().split("T")[0],
-		ptoStartTime: start.toJSON(),
-		ptoEndTime: end.toJSON(),
+		ptoStartDTTM: start.toJSON(),
+		ptoEndDTTM: end.toJSON(),
 		ptoDays: 0.25,
 		ptoEntitled: 10.6,
 	});
