@@ -19,13 +19,11 @@ export default class GooglePTO {
 	constructor({ googleWS }) {
 		this.#googleWS = googleWS;
 		this.simulation.isActive = Deno.env.get("MODE") === "SIMULATION";
-		if (this.simulation.isActive) {
-			setTimeout(async () => {
-				await this.findEvents({});
+		setTimeout(async () => {
+			if (this.simulation.isActive) {
 				await this.clearCalendar();
-				await this.findEvents({});
 				const ptoDate = new Date("2025-06-30");
-				for (let i = 0; i < 5; i++) {
+				for (let i = 0; i < 6; i++) {
 					const bodyRequest = makeBodyRequest({
 						ptoStartDate: new Date(ptoDate.setDate(ptoDate.getDate() + 1)).toJSON().split("T")[0],
 						ptoDays: 1,
@@ -33,11 +31,18 @@ export default class GooglePTO {
 					});
 					await this.requestPTO(bodyRequest);
 				}
-				await this.findEvents({});
-			}, 0);
-
-			makeBodyRequest({});
-		}
+			} else {
+				Utils.reportError({ error: "DEMO ONLY: Clearing calendar, except for summer days" });
+				const events = await this.findEvents({});
+				for (const event of events.items) {
+					if (event.start < new Date("2025-06-15")) {
+						await this.deleteEvent({ id: event.id });
+					}
+				}
+			}
+			const events = await this.findEvents({});
+			ET_Asserts.equals({ expected: 6, actual: events.items.length, message: "For debugging purposes, the summer evetns must be populated" });
+		}, 0);
 		if (this.simulation.isActive) {
 			Utils.reportError({ error: "Running in simulation mode, no changes to the Google Calendar" });
 		}
