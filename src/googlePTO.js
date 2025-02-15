@@ -20,6 +20,25 @@ export default class GooglePTO {
 		this.#googleWS = googleWS;
 		this.simulation.isActive = Deno.env.get("MODE") === "SIMULATION";
 		if (this.simulation.isActive) {
+			setTimeout(async () => {
+				await this.findEvents({});
+				await this.clearCalendar();
+				await this.findEvents({});
+				const ptoDate = new Date("2025-06-30");
+				for (let i = 0; i < 5; i++) {
+					const bodyRequest = makeBodyRequest({
+						ptoStartDate: new Date(ptoDate.setDate(ptoDate.getDate() + 1)).toJSON().split("T")[0],
+						ptoDays: 1,
+						ptoEntitled: 10.6,
+					});
+					await this.requestPTO(bodyRequest);
+				}
+				await this.findEvents({});
+			}, 0);
+
+			makeBodyRequest({});
+		}
+		if (this.simulation.isActive) {
 			Utils.reportError({ error: "Running in simulation mode, no changes to the Google Calendar" });
 		}
 	}
@@ -515,4 +534,32 @@ export default class GooglePTO {
 		output.attendees = output.attendees.map((attendeee) => attendeee.email);
 		return output;
 	}
+}
+
+export function makeBodyRequest(overrides = {}) {
+	const bodyRequest = {
+		ptoRequest: {
+			ptoStartDTTM: null,
+			ptoStartDate: null,
+			ptoID: null,
+			ptoEntitled: null,
+			ptoEndDTTM: null,
+			ptoDays: null,
+			employeeID: "005Ot00000KcxGTIAZ",
+			...overrides,
+		},
+		employee: {
+			attributes: {
+				type: "User",
+				url: "/services/data/v63.0/sobjects/User/005Ot00000KcxGTIAZ",
+			},
+			Id: "005Ot00000KcxGTIAZ",
+			Username: "test-scqg41x0pb0g@example.com",
+			Name: "Andres Perez",
+			Email: "aperez@salesforce.com",
+			StartDate__c: "2024-10-03",
+			TimeZoneSidKey: "America/New_York",
+		},
+	};
+	return bodyRequest;
 }
