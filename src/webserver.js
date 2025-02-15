@@ -35,7 +35,7 @@ export default class Webserver {
 	<h1>Agentforce PTO</h1>
 	<a href="/login">/login</a><br/>
 	<hr/>
-	<a href="/clearCalendar">/clearCalendar</a><br/>
+	<a href="/resetDemo">/resetDemo</a><br/>
 	<hr/>
 	</body>
 </html>`;

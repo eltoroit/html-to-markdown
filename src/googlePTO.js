@@ -20,29 +20,7 @@ export default class GooglePTO {
 		this.#googleWS = googleWS;
 		this.simulation.isActive = Deno.env.get("MODE") === "SIMULATION";
 		setTimeout(async () => {
-			if (this.simulation.isActive) {
-				await this.clearCalendar();
-				const ptoDate = new Date("2025-06-30");
-				for (let i = 0; i < 6; i++) {
-					const bodyRequest = makeBodyRequest({
-						ptoStartDate: new Date(ptoDate.setDate(ptoDate.getDate() + 1)).toJSON().split("T")[0],
-						ptoDays: 1,
-						ptoEntitled: 10.6,
-					});
-					await this.requestPTO(bodyRequest);
-				}
-			} else {
-				Utils.reportError({ error: "DEMO ONLY: Clearing calendar, except for summer days" });
-				// Google Calendar API does not like to crate too many calendar events, but it's OK deleting them :-)
-				const events = await this.findEvents({});
-				for (const event of events.items) {
-					if (event.start < new Date("2025-06-15")) {
-						await this.deleteEvent({ id: event.id });
-					}
-				}
-			}
-			const events = await this.findEvents({});
-			ET_Asserts.equals({ expected: 6, actual: events.items.length, message: "For debugging purposes, the summer evetns must be populated" });
+			this.resetDemo({});
 		}, 0);
 		if (this.simulation.isActive) {
 			Utils.reportError({ error: "Running in simulation mode, no changes to the Google Calendar" });
@@ -168,7 +146,7 @@ export default class GooglePTO {
 		if (this.simulation.isActive) {
 			await new Promise((resolve) => setTimeout(resolve, 5));
 			Utils.reportError({ error: "Simulating [createEvent]. In simulation mode the Calendar API is not being called" });
-			const id = new Date().toJSON();
+			const id = `SIM${new Date().getTime()}`;
 			event.start.timeZone = "America/Toronto";
 			event.end.timeZone = "America/Toronto";
 			this.simulation.events[id] = { ...event, id, status: "confirmed", creator: { email: "SIMULATED" } };
@@ -261,7 +239,32 @@ export default class GooglePTO {
 		return `Calendar Cleared: ${new Date().toJSON()}`;
 	}
 
-	// Sample bodyRequest is located here: /src/tests/googlePTO_test.js (bodyRequestPTO)
+	async resetDemo() {
+		if (this.simulation.isActive) {
+			await this.clearCalendar();
+			const ptoDate = new Date("2025-06-30");
+			for (let i = 0; i < 6; i++) {
+				const bodyRequest = makeBodyRequest({
+					ptoStartDate: new Date(ptoDate.setDate(ptoDate.getDate() + 1)).toJSON().split("T")[0],
+					ptoDays: 1,
+					ptoEntitled: 10.6,
+				});
+				await this.requestPTO(bodyRequest);
+			}
+		} else {
+			Utils.reportError({ error: "DEMO ONLY: Clearing calendar, except for summer days" });
+			// Google Calendar API does not like to crate too many calendar events, but it's OK deleting them :-)
+			const events = await this.findEvents({});
+			for (const event of events.items) {
+				if (event.start < new Date("2025-06-15")) {
+					await this.deleteEvent({ id: event.id });
+				}
+			}
+		}
+		const events = await this.findEvents({});
+		ET_Asserts.equals({ expected: 6, actual: events.items.length, message: "For debugging purposes, the summer events must be populated" });
+	}
+
 	async requestPTO(bodyRequest) {
 		Colors.info({ msg: "START: requestPTO" });
 		ET_Asserts.hasData({ value: bodyRequest, message: "bodyRequest" });

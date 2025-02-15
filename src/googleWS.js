@@ -17,6 +17,7 @@ export default class GoogleWS {
 		moreRoutes.push(this.#login_GET.bind(this));
 		moreRoutes.push(this.#callback_GET.bind(this));
 		moreRoutes.push(this.#addScopes_GET.bind(this));
+		moreRoutes.push(this.#ResetDemo_GET.bind(this));
 
 		// // Calendar events
 		moreRoutes.push(this.#event_GET.bind(this));
@@ -27,6 +28,21 @@ export default class GoogleWS {
 		moreRoutes.push(this.#requestPTO_POST.bind(this));
 		moreRoutes.push(this.#findCalendar_GET.bind(this));
 		moreRoutes.push(this.#clearCalendar_GET.bind(this));
+	}
+
+	#ResetDemo_GET({ router }) {
+		router.get(`/resetDemo`, async (ctx) => {
+			Colors.info({ msg: `${ctx.request.method} ${ctx.request.url}` });
+			try {
+				await this.#googlePTO.resetDemo();
+				const body = await this.#googlePTO.findEvents({});
+				ctx.response.type = "json";
+				ctx.response.status = "200";
+				ctx.response.body = body;
+			} catch (ex) {
+				Utils.reportError({ ctx, ex });
+			}
+		});
 	}
 
 	//#region CALENDAR ROUTER
