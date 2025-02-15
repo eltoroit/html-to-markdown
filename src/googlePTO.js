@@ -18,6 +18,10 @@ export default class GooglePTO {
 
 	constructor({ googleWS }) {
 		this.#googleWS = googleWS;
+		this.simulation.isActive = Deno.env.get("MODE") === "SIMULATION";
+		if (this.simulation.isActive) {
+			Utils.reportError({ error: "Running in simulation mode, no changes to the Google Calendar" });
+		}
 	}
 
 	async findCalendar() {
